@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>「下一节」按钮的各种标记方式</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; color: #1b2333; }
+  h1 { font-size: 15px; margin: 0 0 14px; }
+
+  .case { margin-bottom: 14px; padding: 10px; border: 1px dashed #dde3ee; border-radius: 8px; }
+  .case::after { content: attr(data-variant); font-size: 11px; color: #9aa4b5; display: block; margin-top: 6px; }
+
+  .case a {
+    display: inline-block;
+    padding: 8px 20px;
+    border: 1px solid #cbd3e1;
+    border-radius: 6px;
+    color: #5a6579;
+    text-decoration: none;
+    font-size: 13px;
+    min-width: 64px;
+    text-align: center;
+  }
+  .ico { font-style: normal; }
+
+  /* hover 才显示的按钮：真实尺寸还在，只是被样式压住 */
+  .case[data-variant="hover-hidden"] a { visibility: hidden; }
+</style>
+</head>
+<body>
+
+<h1>「下一节」按钮的六种写法，扩展必须全都认得出来</h1>
+
+<div class="case" data-variant="plain">
+  <a href="javascript:;">下一节</a>
+</div>
+
+<div class="case" data-variant="deco">
+  <a href="javascript:;">下一节 ›</a>
+</div>
+
+<div class="case" data-variant="icon-title">
+  <a href="javascript:;" title="下一节"><i class="ico">›</i></a>
+</div>
+
+<div class="case" data-variant="class-only">
+  <a href="javascript:;" id="nextNode" class="nextNode"><i class="ico">›</i></a>
+</div>
+
+<div class="case" data-variant="hover-hidden">
+  <a href="javascript:;">下一节</a>
+</div>
+
+<div class="case" data-variant="chapter">
+  <a href="javascript:;">下一章 ›</a>
+</div>
+
+<div class="case" data-variant="none">
+  <!-- 这个容器里故意什么都不放 -->
+</div>
+
+<script src="core.js"></script>
+<script src="extractor.js"></script>
+<script>
+(function () {
+  'use strict';
+  window.__log = [];
+  window.__MODE = window.__MODE || 'nextbtn';
+})();
+</script>
+</body>
+</html>

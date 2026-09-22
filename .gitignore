@@ -1,0 +1,24 @@
+# 测试运行时的临时目录（每次跑一个独立目录，正常会自动清理）
+tools/.tmp/
+tools/.uitest/
+tools/.pagingtest/
+tools/.tabtest/
+
+# 测试日志（我习惯重定向进文件，别提交）
+tools/.*.log
+*.log
+
+# 依赖
+node_modules/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# 打包产物
+*.zip
+*.crx
+*.pem

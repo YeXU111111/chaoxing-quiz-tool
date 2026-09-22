@@ -1,0 +1,79 @@
+{
+  "manifest_version": 3,
+  "name": "学习通题库提取器",
+  "version": "1.0.0",
+  "description": "从超星学习通（chaoxing.com）的作业 / 考试页面自动提取题目、选项与答案，存到本地题库，并内置刷题站。",
+  "author": "chaoxing-quiz-tool",
+  "minimum_chrome_version": "110",
+
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "downloads",
+    "contextMenus",
+    "webNavigation",
+    "activeTab"
+  ],
+
+  "host_permissions": [
+    "*://*.chaoxing.com/*",
+    "*://*.chaoxing.com.cn/*",
+    "*://*.chaoxing.cn/*"
+  ],
+
+  "background": {
+    "service_worker": "src/background/service-worker.js"
+  },
+
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "学习通题库提取器",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.chaoxing.com/*",
+        "*://*.chaoxing.com.cn/*",
+        "*://*.chaoxing.cn/*"
+      ],
+      "js": [
+        "src/shared/schema.js",
+        "src/content/extractor.js",
+        "src/content/content.js"
+      ],
+      "css": ["src/content/content.css"],
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/practice/index.html",
+        "src/practice/styles.css",
+        "src/practice/js/core.js",
+        "src/practice/js/store.js",
+        "src/practice/js/engine.js",
+        "src/practice/js/importer.js",
+        "src/practice/js/ui.js"
+      ],
+      "matches": ["*://*.chaoxing.com/*", "*://*.chaoxing.com.cn/*", "*://*.chaoxing.cn/*"]
+    }
+  ]
+}

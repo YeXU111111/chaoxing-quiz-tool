@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>学习通题库提取器</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+<header class="head">
+  <div class="head-left">
+    <span class="mark">题</span>
+    <div>
+      <strong>学习通题库</strong>
+      <small id="summary">正在读取…</small>
+    </div>
+  </div>
+  <button id="btnOpen" class="icon-btn" title="打开刷题台">↗</button>
+</header>
+
+<!-- 当前页面状态 -->
+<section class="card" id="pageCard">
+  <div class="card-title">当前页面</div>
+  <div class="page-status" id="pageStatus">正在检测…</div>
+  <div class="page-actions">
+    <button class="btn primary" id="btnGrab">抓取本页</button>
+    <button class="btn" id="btnGrabAll" title="适合一页一题的分页作业；没有分页时自动退化为一次性抓取">整卷翻页抓取</button>
+  </div>
+  <div class="page-actions" style="margin-top:7px">
+    <button class="btn" id="btnChain" title="从当前小节开始，自动逐节抓完本章（最多 40 节，随时可停）">连续采集本章</button>
+  </div>
+  <div class="page-actions" style="margin-top:7px">
+    <button class="btn mini" id="btnDiag" title="显示每个框架的题目探测结果，用于排查抓不到题的原因">诊断</button>
+    <button class="btn mini" id="btnStopChain" title="停止正在进行的连续采集">停止采集</button>
+  </div>
+  <div class="hint" id="pageHint"></div>
+</section>
+
+<!-- 题库列表 -->
+<section class="card">
+  <div class="card-title">
+    <span>我的题库</span>
+    <span class="muted" id="bankCount"></span>
+  </div>
+  <div class="bank-list" id="bankList"></div>
+</section>
+
+<!-- 底部操作 -->
+<footer class="foot">
+  <label class="switch" title="进入作业/章节页时自动抓取题目">
+    <input type="checkbox" id="setAuto">
+    <span>自动抓取</span>
+  </label>
+  <label class="switch" title="章节页本身不含题目，开启后会自动切到「章节测验」标签抓完再切回来">
+    <input type="checkbox" id="setAutoTab">
+    <span>自动开标签</span>
+  </label>
+  <label class="switch">
+    <input type="checkbox" id="setBadge">
+    <span>显示徽标</span>
+  </label>
+  <div class="spacer"></div>
+  <button class="btn" id="btnExportAll">导出全部</button>
+  <button class="btn danger" id="btnClear" title="清空全部题库">清空</button>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="../shared/schema.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>模拟超星分页作业（翻页抓取回归测试用）</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px 32px; color: #1b2333; }
+  h2 { font-size: 16px; margin: 0 0 6px; }
+  #pageInfo { font-size: 13px; color: #5a6579; margin-bottom: 16px; }
+  .TiMu { border: 1px solid #e2e7f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+  .Zy_TItle { margin-bottom: 8px; }
+  .fl.letter { font-size: 12px; color: #2f6fed; margin-bottom: 4px; display: block; }
+  .Zy_ulTop { list-style: none; margin: 0; padding: 0; }
+  .Zy_ulTop li { padding: 4px 0; }
+  .check_answer { font-style: normal; font-weight: 600; margin-right: 6px; }
+  .Py_answer { margin-top: 8px; font-size: 13px; color: #0e7a46; }
+  .empty-note { padding: 40px; text-align: center; color: #8b95a8; border: 1px dashed #cbd3e1; border-radius: 8px; }
+  #nav { margin-top: 24px; }
+  #prevNextFocusNext {
+    display: inline-block; padding: 8px 22px;
+    border: 1px solid #2f6fed; border-radius: 6px; color: #2f6fed;
+    text-decoration: none; cursor: pointer; font-size: 14px;
+  }
+  #prevNextFocusNext.disabled { color: #ccc; border-color: #e8e8e8; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<h2>模拟超星分页作业</h2>
+<div id="pageInfo">第 1 页 / 共 6 页</div>
+
+<div id="questions"></div>
+
+<div id="nav"><a id="prevNextFocusNext" href="javascript:;">下一题</a></div>
+
+<script src="core.js"></script>
+<script src="extractor.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  window.__log = [];
+
+  // 测试编排脚本会注入 window.__MODE；直接用浏览器打开时也可以走 ?mode=xxx
+  var MODE = window.__MODE || (String(location.search).match(/mode=(\w+)/) || [])[1] || 'normal';
+
+  /*
+   * 每页的配置：{n: 题目数, d: 渲染延迟(ms)}
+   *
+   * normal 这一组是刻意设计来打死旧版逻辑的：
+   *   第 3 页没有题目   → 旧版会在这里 break，只抓到 4 题
+   *   第 4/5 页渲染很慢 → 旧版固定 sleep 900ms 会扫到上一页的内容
+   */
+  var PLAN;
+  if (MODE === 'stall') {
+    PLAN = [{ n: 2, d: 0 }, { n: 2, d: 0 }, { n: 2, d: 0 }];
+  } else if (MODE === 'empty') {
+    PLAN = [{ n: 0, d: 0 }, { n: 0, d: 100 }, { n: 0, d: 100 }];
+  } else if (MODE === 'abort') {
+    PLAN = [];
+    for (var a = 0; a < 20; a++) PLAN.push({ n: 2, d: 150 });
+  } else if (MODE === 'disabled') {
+    // 最后一页不隐藏按钮，而是把它变灰 —— 超星更常见的是这种
+    PLAN = [{ n: 2, d: 0 }, { n: 2, d: 0 }, { n: 2, d: 0 }, { n: 2, d: 0 }];
+  } else {
+    PLAN = [
+      { n: 2, d: 0 },      // 第 1 页
+      { n: 2, d: 0 },      // 第 2 页
+      { n: 0, d: 400 },    // 第 3 页：没有题目的说明页
+      { n: 2, d: 1500 },   // 第 4 页：慢
+      { n: 2, d: 2000 },   // 第 5 页：更慢
+      { n: 2, d: 0 }       // 第 6 页：最后一页，之后「下一题」消失
+    ];
+  }
+
+  var idx = 0;
+  var qSeq = 0;
+  var box = document.getElementById('questions');
+  var info = document.getElementById('pageInfo');
+  var btn = document.getElementById('prevNextFocusNext');
+
+  /** 造一个超星风格的题目块，题号唯一，方便验证去重 */
+  function blockHtml(seq) {
+    return '' +
+      '<div class="TiMu">' +
+      '  <div class="Zy_TItle clearfix">' +
+      '    <div class="fl letter">(单选题)</div>' +
+      '    <div class="clearfix">' + seq + '、第 ' + seq + ' 道题的题干内容</div>' +
+      '  </div>' +
+      '  <ul class="Zy_ulTop">' +
+      '    <li><label><i class="fl check_answer">A</i><a class="fl"><span>选项甲 ' + seq + '</span></a></label></li>' +
+      '  </ul>' +
+      '  <div class="Py_answer clearfix"><div>正确答案：A</div></div>' +
+      '</div>';
+  }
+
+  function render(i) {
+    idx = i;
+    var plan = PLAN[idx];
+
+    info.textContent = '第 ' + (idx + 1) + ' 页 / 共 ' + PLAN.length + ' 页';
+
+    // ★ 两段式渲染：先清空，过一会儿再填。
+    //   超星就是这个行为，也是「等页面变了就扫描」会扫到空页面的原因。
+    box.innerHTML = plan.n === 0
+      ? '<div class="empty-note">本页为附加说明，没有题目</div>'
+      : '<div class="empty-note">加载中…</div>';
+    window.__log.push('p' + (idx + 1) + ':clear');
+
+    setTimeout(function () {
+      var html = '';
+      for (var k = 0; k < plan.n; k++) html += blockHtml(++qSeq);
+      box.innerHTML = html || '<div class="empty-note">本页为附加说明，没有题目</div>';
+      window.__log.push('p' + (idx + 1) + ':fill(' + plan.n + ')');
+      updateNav();
+    }, plan.d);
+  }
+
+  function updateNav() {
+    if (idx < PLAN.length - 1) return;
+
+    // 到最后一页。两种收尾方式都要能识别：
+    //   normal / stall : 按钮直接消失
+    //   disabled       : 按钮还在，但加类名变灰
+    if (MODE === 'disabled') {
+      btn.classList.add('disabled');
+      window.__log.push('nav:disabled');
+    } else {
+      btn.style.display = 'none';
+      window.__log.push('nav:hidden');
+    }
+  }
+
+  btn.addEventListener('click', function () {
+    if (btn.classList.contains('disabled')) {
+      window.__log.push('disabled:click');
+      return;
+    }
+    if (MODE === 'stall') {
+      // 按钮看着能点，点了没反应 —— 模拟超星偶尔出现的假按钮
+      window.__log.push('stall:click');
+      return;
+    }
+    if (idx < PLAN.length - 1) render(idx + 1);
+  });
+
+  render(0);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,642 @@
+{
+  "schema": "chaoxing-quiz/v1",
+  "exportedAt": "2026-09-21T14:52:49.698Z",
+  "generator": "chaoxing-quiz-tool",
+  "stats": {
+    "banks": 2,
+    "questions": 15
+  },
+  "banks": [
+    {
+      "id": "demo::course-net::work-1",
+      "courseId": "demo-course-net",
+      "courseName": "计算机网络",
+      "workId": "demo-work-1",
+      "workTitle": "第 1 章 概述 · 课后作业",
+      "kind": "work",
+      "createdAt": "2026-09-21T14:52:49.695Z",
+      "updatedAt": "2026-09-21T14:52:49.697Z",
+      "questions": [
+        {
+          "id": "q_dedb68d33c4e0347",
+          "type": "single",
+          "index": 1,
+          "stem": "在 OSI 参考模型中，负责在相邻结点之间提供无差错的帧传输的是哪一层？",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "物理层",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "数据链路层",
+              "html": ""
+            },
+            {
+              "key": "C",
+              "text": "网络层",
+              "html": ""
+            },
+            {
+              "key": "D",
+              "text": "传输层",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "B"
+            ],
+            "text": []
+          },
+          "answerRaw": "B",
+          "analysis": "数据链路层的核心任务是把物理层收到的比特流组织成帧，并通过 CRC、序号、重传等手段实现相邻结点间的可靠传输。网络层负责的是端到端（跨越多个网络）的交付。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 1 章 概述",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-1",
+          "workTitle": "第 1 章 概述 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.696Z"
+        },
+        {
+          "id": "q_4905857fa11e2453",
+          "type": "single",
+          "index": 2,
+          "stem": "下列哪个协议工作在传输层，并提供面向连接的可靠传输服务？",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "UDP",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "IP",
+              "html": ""
+            },
+            {
+              "key": "C",
+              "text": "TCP",
+              "html": ""
+            },
+            {
+              "key": "D",
+              "text": "ICMP",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "C"
+            ],
+            "text": []
+          },
+          "answerRaw": "C",
+          "analysis": "TCP 面向连接、提供可靠交付；UDP 虽然也在传输层，但是无连接的；IP 在网络层；ICMP 是网络层的差错报告协议。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 1 章 概述",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-1",
+          "workTitle": "第 1 章 概述 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.697Z"
+        },
+        {
+          "id": "q_8fc3da02742265a6",
+          "type": "multiple",
+          "index": 3,
+          "stem": "下列哪些属于分组交换相对电路交换的优点？",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "线路利用率高",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "传输时延固定且有保证",
+              "html": ""
+            },
+            {
+              "key": "C",
+              "text": "支持不同速率的终端之间通信",
+              "html": ""
+            },
+            {
+              "key": "D",
+              "text": "网络故障时生存性强",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "A",
+              "C",
+              "D"
+            ],
+            "text": []
+          },
+          "answerRaw": "ACD",
+          "analysis": "电路交换独占线路，时延固定可预测，这是它的优点；分组交换是「尽力而为」，时延抖动反而更大。所以 B 项描述的是电路交换的特点。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 1 章 概述",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-1",
+          "workTitle": "第 1 章 概述 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.697Z"
+        },
+        {
+          "id": "q_9229ccd49ae2a160",
+          "type": "judge",
+          "index": 4,
+          "stem": "在 TCP/IP 体系结构中，网络接口层既包含物理层也包含数据链路层的功能。",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "对",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "错",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "A"
+            ],
+            "text": []
+          },
+          "answerRaw": "A",
+          "analysis": "TCP/IP 的网络接口层对应 OSI 的物理层 + 数据链路层，这一层不规定具体协议，由底层网络自己决定，体现的是 TCP/IP「兼容一切底层网络」的设计思想。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 1 章 概述",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-1",
+          "workTitle": "第 1 章 概述 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.697Z"
+        },
+        {
+          "id": "q_4bb84a3c3f816480",
+          "type": "judge",
+          "index": 5,
+          "stem": "IP 协议提供的是可靠交付服务。",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "对",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "错",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "B"
+            ],
+            "text": []
+          },
+          "answerRaw": "B",
+          "analysis": "IP 提供的是「尽最大努力交付」(best-effort)，不保证不丢失、不保证按序到达。可靠性必须由上层（如 TCP）来补。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 1 章 概述",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-1",
+          "workTitle": "第 1 章 概述 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.697Z"
+        },
+        {
+          "id": "q_c1be5500c7a6adb4",
+          "type": "fill",
+          "index": 6,
+          "stem": "OSI 参考模型共分为 ______ 层，其中最高层是 ______ 层。",
+          "stemHtml": "",
+          "options": [],
+          "answer": {
+            "keys": [],
+            "text": [
+              "7",
+              "应用"
+            ]
+          },
+          "answerRaw": "第一空：7 第二空：应用",
+          "analysis": "OSI 是七层模型：物理、数据链路、网络、传输、会话、表示、应用。TCP/IP 通常按四层（网络接口、网际、传输、应用）理解。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 1 章 概述",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-1",
+          "workTitle": "第 1 章 概述 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.697Z"
+        },
+        {
+          "id": "q_19759abb8b0558a7",
+          "type": "fill",
+          "index": 7,
+          "stem": "在计算机网络中，把「主机之间交换数据的规则集合」称为 ______。",
+          "stemHtml": "",
+          "options": [],
+          "answer": {
+            "keys": [],
+            "text": [
+              "协议"
+            ]
+          },
+          "answerRaw": "协议",
+          "analysis": "协议包含三要素：语法（数据格式）、语义（做什么动作）、同步（动作的先后顺序）。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 1 章 概述",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-1",
+          "workTitle": "第 1 章 概述 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.697Z"
+        },
+        {
+          "id": "q_690da6ab88f5cc7f",
+          "type": "single",
+          "index": 8,
+          "stem": "ping 命令使用的协议是？",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "ARP",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "ICMP",
+              "html": ""
+            },
+            {
+              "key": "C",
+              "text": "TCP",
+              "html": ""
+            },
+            {
+              "key": "D",
+              "text": "DNS",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "B"
+            ],
+            "text": []
+          },
+          "answerRaw": "B",
+          "analysis": "ping 通过发送 ICMP Echo Request 并等待 Echo Reply 来测试连通性，它工作在网际层。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 1 章 概述",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-1",
+          "workTitle": "第 1 章 概述 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.697Z"
+        }
+      ]
+    },
+    {
+      "id": "demo::course-net::work-2",
+      "courseId": "demo-course-net",
+      "courseName": "计算机网络",
+      "workId": "demo-work-2",
+      "workTitle": "第 2 章 物理层 · 课后作业",
+      "kind": "work",
+      "createdAt": "2026-09-21T14:52:49.697Z",
+      "updatedAt": "2026-09-21T14:52:49.698Z",
+      "questions": [
+        {
+          "id": "q_beda2bd530dfe419",
+          "type": "single",
+          "index": 1,
+          "stem": "在常用的传输介质中，带宽最宽、抗电磁干扰能力最强的是？",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "双绞线",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "同轴电缆",
+              "html": ""
+            },
+            {
+              "key": "C",
+              "text": "光纤",
+              "html": ""
+            },
+            {
+              "key": "D",
+              "text": "无线电波",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "C"
+            ],
+            "text": []
+          },
+          "answerRaw": "C",
+          "analysis": "光纤靠光信号传输，不受电磁干扰影响，且可用带宽远高于铜介质。缺点是不易弯折、接口成本较高。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 2 章 物理层",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-2",
+          "workTitle": "第 2 章 物理层 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.697Z"
+        },
+        {
+          "id": "q_1676dc3bb88b9bdf",
+          "type": "single",
+          "index": 2,
+          "stem": "数据通信中，波特率指的是？",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "每秒传输的比特数",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "每秒传输的码元数",
+              "html": ""
+            },
+            {
+              "key": "C",
+              "text": "信号的最大频率",
+              "html": ""
+            },
+            {
+              "key": "D",
+              "text": "信道的带宽",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "B"
+            ],
+            "text": []
+          },
+          "answerRaw": "B",
+          "analysis": "波特率（Baud）是码元传输速率，单位是「码元/秒」。比特率 = 波特率 × 每码元携带的比特数，两者在四进制调制下并不相等。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 2 章 物理层",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-2",
+          "workTitle": "第 2 章 物理层 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.698Z"
+        },
+        {
+          "id": "q_91693cc07aedb66c",
+          "type": "multiple",
+          "index": 3,
+          "stem": "关于香农公式 C = W·log₂(1 + S/N)，下列说法正确的有？",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "C 是信道的极限信息传输速率",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "W 是信道带宽",
+              "html": ""
+            },
+            {
+              "key": "C",
+              "text": "S/N 是信噪比",
+              "html": ""
+            },
+            {
+              "key": "D",
+              "text": "只要增加带宽就能无限提高传输速率",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "A",
+              "B",
+              "C"
+            ],
+            "text": []
+          },
+          "answerRaw": "ABC",
+          "analysis": "香农公式给出的是理论极限。虽然带宽越大 C 越大，但实际中带宽增加会同时引入更多噪声，且硬件实现有上限，D 项是典型误解。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 2 章 物理层",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-2",
+          "workTitle": "第 2 章 物理层 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.698Z"
+        },
+        {
+          "id": "q_a0dca999950e9fe5",
+          "type": "judge",
+          "index": 4,
+          "stem": "曼彻斯特编码的优点是自带同步信息，缺点是编码效率只有 50%。",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "对",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "错",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "A"
+            ],
+            "text": []
+          },
+          "answerRaw": "A",
+          "analysis": "曼彻斯特编码在每个码元中间强制跳变，接收方可以直接从跳变中提取时钟，因此不需要额外的同步信号；代价是每个码元需要两个信号周期，效率减半。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 2 章 物理层",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-2",
+          "workTitle": "第 2 章 物理层 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.698Z"
+        },
+        {
+          "id": "q_da9adbe700570f3b",
+          "type": "judge",
+          "index": 5,
+          "stem": "数字信号在光纤中传输时不存在衰减。",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "对",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "错",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "B"
+            ],
+            "text": []
+          },
+          "answerRaw": "B",
+          "analysis": "光纤也有衰减，只是比铜缆小得多，且衰减主要来自材料吸收、散射和接头损耗，所以长距离传输依然需要中继器或光放大器。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 2 章 物理层",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-2",
+          "workTitle": "第 2 章 物理层 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.698Z"
+        },
+        {
+          "id": "q_e17492c60f8f812a",
+          "type": "fill",
+          "index": 6,
+          "stem": "在数据通信中，常用 ______ 来衡量信道质量，其单位是分贝（dB）。",
+          "stemHtml": "",
+          "options": [],
+          "answer": {
+            "keys": [],
+            "text": [
+              "信噪比"
+            ]
+          },
+          "answerRaw": "信噪比",
+          "analysis": "信噪比 = 信号平均功率 / 噪声平均功率，常用 10lg(S/N) 以分贝表示。它是香农公式的关键输入。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 2 章 物理层",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-2",
+          "workTitle": "第 2 章 物理层 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.698Z"
+        },
+        {
+          "id": "q_c9bb566f64608c63",
+          "type": "single",
+          "index": 7,
+          "stem": "基带传输与频带传输的区别在于？",
+          "stemHtml": "",
+          "options": [
+            {
+              "key": "A",
+              "text": "是否使用调制",
+              "html": ""
+            },
+            {
+              "key": "B",
+              "text": "是否使用双绞线",
+              "html": ""
+            },
+            {
+              "key": "C",
+              "text": "是否使用数字信号",
+              "html": ""
+            },
+            {
+              "key": "D",
+              "text": "传输距离的远近",
+              "html": ""
+            }
+          ],
+          "answer": {
+            "keys": [
+              "A"
+            ],
+            "text": []
+          },
+          "answerRaw": "A",
+          "analysis": "基带传输直接把数字信号送上线路（如常见的以太网）；频带传输则先把数字信号调制到载波上再传输（如 ADSL、Wi-Fi）。核心区别是有无调制。",
+          "score": null,
+          "hasAnswer": true,
+          "chapter": "第 2 章 物理层",
+          "courseId": "demo-course-net",
+          "courseName": "计算机网络",
+          "workId": "demo-work-2",
+          "workTitle": "第 2 章 物理层 · 课后作业",
+          "sourceUrl": "https://mooc1.chaoxing.com/mooc-ans/work/doWork",
+          "origin": "",
+          "capturedAt": "2026-09-21T14:52:49.698Z"
+        }
+      ]
+    }
+  ]
+}

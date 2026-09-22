@@ -1,0 +1,287 @@
+<!-- ⚠ 这是 tools/sync-practice.mjs 生成的副本，不要直接改这个文件。
+     源文件在 site/index.html，改完执行 node tools/sync-practice.mjs 重新同步。 -->
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>学习通刷题台</title>
+<link rel="stylesheet" href="styles.css">
+<script>
+  // 主题要在 CSS 之前定好，否则会闪一下白底
+  try {
+    var s = JSON.parse(localStorage.getItem('cqb:settings') || '{}');
+    if (s.theme) document.documentElement.setAttribute('data-theme', s.theme);
+  } catch (e) {}
+</script>
+<!-- MathJax 在扩展页面里用不了：MV3 默认 CSP 是 script-src 'self'，远程脚本会被拦掉，
+           而且上架政策也不允许远程加载代码。所以公式会以原始文本显示（$x^2$ 原样呈现），
+           不影响做题。想要渲染公式，得把 MathJax 打包进扩展本地再引用。
+           独立站版本（site/index.html）没有这个限制，那边照常渲染。 -->
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">题</span>
+    <div class="brand-text">
+      <strong>学习通刷题台</strong>
+      <small id="envBadge">本地模式</small>
+    </div>
+  </div>
+
+  <div class="topbar-center">
+    <label class="field">
+      <span>题库</span>
+      <select id="bankSelect"></select>
+    </label>
+    <div class="segmented" id="modeSwitch" role="tablist">
+      <button data-mode="sequential" class="active">顺序</button>
+      <button data-mode="random">随机</button>
+      <button data-mode="recite">背题</button>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    <button id="btnImport" class="btn">导入题库</button>
+    <button id="btnExport" class="btn">导出</button>
+    <button id="btnSettings" class="btn btn-icon" title="设置">⚙</button>
+    <button id="btnTheme" class="btn btn-icon" title="切换主题">◐</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <section class="panel">
+      <h3>本组进度</h3>
+      <div class="stat-grid">
+        <div class="stat"><b id="statTotal">0</b><span>总题数</span></div>
+        <div class="stat"><b id="statDone">0</b><span>已作答</span></div>
+        <div class="stat"><b id="statAcc" class="c-ok">—</b><span>正确率</span></div>
+        <div class="stat"><b id="statWrong" class="c-bad">0</b><span>错题</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>筛选</h3>
+      <div class="filter-group">
+        <label>
+          学科
+          <button class="link-btn" id="btnRenameSubject" title="给当前选中的学科改名">改名</button>
+          <button class="link-btn" id="btnOrganize" title="逐套题库指定学科 —— 导入的题目在这里归类">归类</button>
+        </label>
+        <div class="chips" id="subjectFilter"></div>
+      </div>
+      <div class="filter-group">
+        <label>状态</label>
+        <div class="chips" id="statusFilter">
+          <button data-status="all" class="chip active">全部</button>
+          <button data-status="undone" class="chip">未做</button>
+          <button data-status="done" class="chip">已做</button>
+          <button data-status="wrong" class="chip">错题</button>
+          <button data-status="starred" class="chip">收藏</button>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>题型</label>
+        <div class="chips" id="typeFilter"></div>
+      </div>
+      <div class="filter-group">
+        <label>章节</label>
+        <ul class="chapter-list" id="chapterList"></ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>题号</h3>
+      <div class="question-grid" id="questionGrid"></div>
+    </section>
+  </aside>
+
+  <main class="stage">
+    <div class="empty" id="emptyState">
+      <div class="empty-icon">📥</div>
+      <h2>题库还是空的</h2>
+      <p>用 Edge 扩展在学习通作业/考试页面点「抓取本题」，题目会自动存到这里；<br>
+         或者点右上角「导入题库」手动导入 JSON / 文本格式的题库。</p>
+      <div class="empty-actions">
+        <button class="btn primary" id="btnImport2">导入题库</button>
+        <button class="btn" id="btnSample">载入示例题库</button>
+      </div>
+    </div>
+
+    <article class="qcard hidden" id="questionCard">
+      <header class="qcard-head">
+        <div class="qcard-tags">
+          <span class="tag tag-type" id="tagType">单选题</span>
+          <span class="tag tag-subject" id="tagSubject"></span>
+          <span class="tag" id="tagChapter"></span>
+          <span class="tag tag-bank" id="tagBank"></span>
+          <span class="tag tag-nosanswer hidden" id="tagNoAnswer">答案未公布</span>
+        </div>
+        <div class="qcard-pos"><b id="posCurrent">1</b> / <span id="posTotal">1</span></div>
+      </header>
+
+      <div class="qstem" id="qStem"></div>
+      <div class="options" id="qOptions"></div>
+      <div class="fill-area hidden" id="qFill"></div>
+
+      <div class="feedback hidden" id="qFeedback"></div>
+
+      <footer class="qcard-foot">
+        <div class="foot-left">
+          <button class="btn" id="btnStar" title="快捷键 F">☆ 收藏</button>
+          <button class="btn" id="btnReveal" title="快捷键 Space">显示答案</button>
+        </div>
+        <div class="foot-right">
+          <button class="btn" id="btnPrev" title="快捷键 ←">上一题</button>
+          <button class="btn primary" id="btnSubmit" title="快捷键 Enter">提交</button>
+          <button class="btn primary" id="btnNext" title="快捷键 →">下一题</button>
+        </div>
+      </footer>
+
+      <div class="kbd-hint">
+        <span><kbd>A</kbd>–<kbd>H</kbd> 选项</span>
+        <span><kbd>Enter</kbd> 提交 / 下一题</span>
+        <span><kbd>←</kbd><kbd>→</kbd> 翻页</span>
+        <span><kbd>F</kbd> 收藏</span>
+        <span><kbd>Space</kbd> 显示答案</span>
+        <span><kbd>R</kbd> 重做本题</span>
+      </div>
+    </article>
+  </main>
+</div>
+
+<!-- ============================ 导入弹窗 ============================ -->
+<div class="modal hidden" id="importModal">
+  <div class="modal-card">
+    <header class="modal-head">
+      <h2>导入题库</h2>
+      <button class="btn btn-icon" data-close>✕</button>
+    </header>
+    <div class="modal-body">
+      <p class="hint" id="importHint">
+        支持三种方式：选择 <code>.json</code> 文件、直接粘贴 JSON、或粘贴纯文本题库。
+      </p>
+
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".json,.txt,.md" hidden>
+        <p><b>点击选择文件</b> 或把文件拖到这里</p>
+        <small>.json / .txt / .md</small>
+      </div>
+
+      <label class="field-block">
+        <span>或粘贴内容</span>
+        <textarea id="pasteArea" rows="8"
+          placeholder='{"schema":"chaoxing-quiz/v1","banks":[...]}&#10;或者每行一题：&#10;1、HTTP 默认端口？|A.80|B.443|答案:A'></textarea>
+      </label>
+
+      <div class="field-row">
+        <label class="field-block">
+          <span>这批题属于哪个学科？<small class="hint-inline">留空则按题库自带的课程名识别</small></span>
+          <input type="text" id="importSubject" list="subjectOptions" placeholder="例如：高等数学">
+        </label>
+        <label class="field-block">
+          <span>题库名<small class="hint-inline">可选，只在导入单套题库时生效</small></span>
+          <input type="text" id="importTitle" placeholder="例如：第 3 章 课后作业">
+        </label>
+      </div>
+
+      <div class="import-report hidden" id="importReport"></div>
+    </div>
+    <footer class="modal-foot">
+      <button class="btn" id="btnClearBanks">清空全部题库</button>
+      <div class="spacer"></div>
+      <button class="btn" data-close>取消</button>
+      <button class="btn primary" id="btnDoImport">导入</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============================ 设置弹窗 ============================ -->
+<div class="modal hidden" id="settingsModal">
+  <div class="modal-card">
+    <header class="modal-head">
+      <h2>设置</h2>
+      <button class="btn btn-icon" data-close>✕</button>
+    </header>
+    <div class="modal-body">
+      <label class="switch-row">
+        <input type="checkbox" id="setShowAnswer" checked>
+        <div><b>提交后立即显示答案与解析</b><small>关掉后只提示对错，需要手动点「显示答案」</small></div>
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" id="setAutoNext">
+        <div><b>答对后自动进入下一题</b><small>答错时不自动跳，方便看解析</small></div>
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" id="setShuffleOptions">
+        <div><b>打乱选项顺序</b><small>防止靠位置记答案；答案键会同步重映射</small></div>
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" id="setKeepWrong">
+        <div><b>错题答对后仍保留在错题本</b><small>默认答对一次即自动移出错题本</small></div>
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" id="setOnlyAnswer">
+        <div><b>跳过答案未公布的题</b><small>老师还没放答案的题目不进入练习序列</small></div>
+      </label>
+
+      <hr>
+      <div class="danger-row">
+        <div><b>清空练习进度</b><small>做题记录、错题本、收藏会全部重置，题库不受影响</small></div>
+        <button class="btn danger" id="btnResetProgress">清空进度</button>
+      </div>
+    </div>
+    <footer class="modal-foot">
+      <div class="spacer"></div>
+      <button class="btn primary" data-close>完成</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ============================ 整理题库（逐套指定学科） ============================ -->
+<div class="modal hidden" id="organizeModal">
+  <div class="modal-card modal-wide">
+    <header class="modal-head">
+      <h2>整理题库</h2>
+      <button class="btn btn-icon" data-close>✕</button>
+    </header>
+    <div class="modal-body">
+      <p class="hint">
+        给每套题库指定学科。留空 = 用题库自带的课程名自动识别。<br>
+        导入进来的题目一般没有课程名，会全部落在「未分类」里 —— 在这里把它们分开。
+      </p>
+
+      <div class="organize-toolbar">
+        <input type="text" id="organizeSearch" placeholder="搜索题库…">
+        <label class="field-inline">
+          <span>批量设为</span>
+          <input type="text" id="organizeBulk" list="subjectOptions" placeholder="填一个学科名">
+          <button class="btn mini" id="btnOrganizeBulk">应用到全部</button>
+        </label>
+      </div>
+
+      <div class="organize-list" id="organizeList"></div>
+    </div>
+    <footer class="modal-foot">
+      <div class="spacer"></div>
+      <button class="btn" data-close>取消</button>
+      <button class="btn primary" id="btnOrganizeSave">保存</button>
+    </footer>
+  </div>
+</div>
+
+<!-- 已有学科名，给各处输入框做补全 -->
+<datalist id="subjectOptions"></datalist>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/core.js"></script>
+<script src="js/sample.js"></script>
+<script src="js/store.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/importer.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
