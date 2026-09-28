@@ -88,6 +88,96 @@
     return Promise.resolve();
   }
 
+  /* ---------------------------- 删除 ---------------------------- */
+
+  /**
+   * 删除若干套题库。
+   *
+   * 会把被删掉的题目 id 一并报回去，交给界面去清理练习进度。
+   * 只删题库不删进度的话，一是这些记录永远没人再读、白占 localStorage 配额，
+   * 二是以后重新导入同一批题（id 相同）会莫名其妙带上旧的做题记录。
+   *
+   * @returns {Promise<{banks, removedBanks, removedIds}>}
+   */
+  function deleteBanks(bankIds) {
+    return loadBanks().then(function (banks) {
+      var removedBanks = 0;
+      var removedIds = [];
+
+      (bankIds || []).forEach(function (id) {
+        var b = banks[id];
+        if (!b) return;
+        (b.questions || []).forEach(function (q) { removedIds.push(q.id); });
+        delete banks[id];
+        removedBanks++;
+      });
+
+      if (!removedBanks) {
+        return { banks: banks, removedBanks: 0, removedIds: [] };
+      }
+
+      return saveBanks(banks).then(function () {
+        return { banks: banks, removedBanks: removedBanks, removedIds: removedIds };
+      });
+    });
+  }
+
+  /**
+   * 从某一套题库里删掉指定的题目。
+   * 删空了就把这套题库一起移除 —— 留一个 0 题的壳子没有意义。
+   */
+  function deleteQuestions(bankId, questionIds) {
+    return loadBanks().then(function (banks) {
+      var b = banks[bankId];
+      if (!b) return { banks: banks, removed: 0, removedIds: [], emptied: false };
+
+      var kill = {};
+      (questionIds || []).forEach(function (id) { kill[id] = 1; });
+
+      var removedIds = [];
+      var kept = (b.questions || []).filter(function (q) {
+        if (kill[q.id]) { removedIds.push(q.id); return false; }
+        return true;
+      });
+
+      if (!removedIds.length) {
+        return { banks: banks, removed: 0, removedIds: [], emptied: false };
+      }
+
+      var emptied = !kept.length;
+      if (emptied) {
+        delete banks[bankId];
+      } else {
+        b.questions = kept;
+        b.updatedAt = new Date().toISOString();
+      }
+
+      return saveBanks(banks).then(function () {
+        return {
+          banks: banks,
+          removed: removedIds.length,
+          removedIds: removedIds,
+          emptied: emptied
+        };
+      });
+    });
+  }
+
+  /**
+   * 丢掉这些题目的练习进度。
+   *
+   * 直接改传进来的 progress 对象（界面手里那份就是权威副本），
+   * 顺手触发一次防抖落盘。回读 storage 会拿到还没写完的旧数据。
+   */
+  function forgetProgress(progress, ids) {
+    var n = 0;
+    (ids || []).forEach(function (id) {
+      if (progress && progress[id]) { delete progress[id]; n++; }
+    });
+    if (n) saveProgress(progress);
+    return n;
+  }
+
   /** 学科映射也要能被监听 —— 在另一个标签页改完名字，这边得跟着刷新 */
   function onSubjectsChanged(cb) {
     if (IN_EXTENSION && chrome.storage.onChanged) {
@@ -259,6 +349,9 @@
     saveBanks: saveBanks,
     importBankPayload: importBankPayload,
     clearBanks: clearBanks,
+    deleteBanks: deleteBanks,
+    deleteQuestions: deleteQuestions,
+    forgetProgress: forgetProgress,
     onBanksChanged: onBanksChanged,
     loadSubjects: loadSubjects,
     saveSubjects: saveSubjects,

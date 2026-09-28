@@ -661,6 +661,52 @@ const splitMap = CQB.renameSubject(taggedMap, { keys: ['imported-1'] }, '大学�
 eq(CQB.subjectNameOf(importedBank, splitMap), '大学英语', '可以改成别的学科');
 
 /* ------------------------------------------------------------------ *
+ * 5d. 删除题库 / 删除题目 / 清理进度
+ * ------------------------------------------------------------------ */
+
+console.log('\n[5d] 删除与进度清理');
+
+function mkBank(id, n) {
+  var qs = [];
+  for (var i = 0; i < n; i++) {
+    qs.push(CQB.normalizeQuestion({
+      type: 'single', index: i + 1, stem: id + ' 第 ' + (i + 1) + ' 题',
+      options: ['甲', '乙'], answerRaw: 'A', hasAnswer: true
+    }));
+  }
+  return { id: id, workTitle: id, courseId: '', courseName: '', kind: 'work', questions: qs };
+}
+
+await sb.CQBStore.saveBanks({ d1: mkBank('d1', 3), d2: mkBank('d2', 2) });
+
+const del1 = await sb.CQBStore.deleteBanks(['d1', '根本不存在的id']);
+eq(del1.removedBanks, 1, '删掉 1 套（不存在的 id 被跳过，不报错）');
+ok(!del1.banks.d1, '★ d1 已从题库里移除');
+ok(!!del1.banks.d2, 'd2 没被误删');
+eq(del1.removedIds.length, 3, '★ 回报了 3 道被删题目的 id（界面靠它清进度）');
+
+const del2 = await sb.CQBStore.deleteQuestions('d2', [del1.banks.d2.questions[0].id]);
+eq(del2.removed, 1, '从题库里删掉 1 道题');
+eq(del2.banks.d2.questions.length, 1, '题库里还剩 1 道');
+eq(del2.emptied, false, '没删空，题库保留');
+
+const del3 = await sb.CQBStore.deleteQuestions('d2', [del2.banks.d2.questions[0].id]);
+eq(del3.emptied, true, '★ 删空后 emptied 为 true');
+ok(!del3.banks.d2, '★ 空的题库被一并移除，不留一个 0 题的壳子');
+
+eq((await sb.CQBStore.deleteQuestions('nope', ['x'])).removed, 0, '删除不存在的题库返回 0，不抛异常');
+
+// 进度清理
+const delProg = { a: { attempts: 1 }, b: { attempts: 2 }, c: { attempts: 3 } };
+const dropped = sb.CQBStore.forgetProgress(delProg, ['a', 'c', '根本不存在的id']);
+eq(dropped, 2, '清掉 2 条练习记录（不存在的 id 不计入）');
+ok(!delProg.a && !!delProg.b, '★ 只删指定的那几条，其余原封不动');
+
+await new Promise(r => setTimeout(r, 260));   // saveProgress 有 150ms 防抖
+const persisted = sb.CQBStore.loadProgress();
+ok(!persisted.c, '★ 进度清理真的落盘了（不是只改了内存里那个对象）');
+
+/* ------------------------------------------------------------------ *
  * 汇总
  * ------------------------------------------------------------------ */
 

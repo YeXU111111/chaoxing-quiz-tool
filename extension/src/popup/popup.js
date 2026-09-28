@@ -130,11 +130,36 @@
       return;
     }
     if (act === 'del') {
-      if (!confirm('删除题库「' + (bank.workTitle || bankId) + '」？练习进度不受影响。')) return;
-      send({ type: 'DELETE_BANK', bankId: bankId }).then(function () {
-        toast('已删除');
+      var n = (bank.questions || []).length;
+      if (!confirm('删除题库「' + (bank.workTitle || bankId) + '」？\n\n' +
+          '共 ' + n + ' 道题。这些题的练习记录（作答 / 错题本 / 收藏）也会一起清掉。\n\n' +
+          '此操作不可撤销。')) return;
+
+      send({ type: 'DELETE_BANK', bankId: bankId }).then(function (res) {
+        var dropped = forgetProgress(res && res.removedIds);
+        toast('已删除' + (dropped ? '，连同 ' + dropped + ' 条练习记录' : ''));
         refresh();
       });
+    }
+  }
+
+  /**
+   * 清掉这些题目的练习记录。
+   *
+   * 练习进度存在 localStorage 的 cqb:progress 里，service worker 碰不到
+   * （worker 里没有 localStorage），所以只能在这边做。
+   * 弹窗和刷题台是同一个扩展源，共享同一份 localStorage。
+   */
+  function forgetProgress(ids) {
+    if (!ids || !ids.length) return 0;
+    try {
+      var p = JSON.parse(localStorage.getItem('cqb:progress') || '{}');
+      var n = 0;
+      ids.forEach(function (id) { if (p[id]) { delete p[id]; n++; } });
+      if (n) localStorage.setItem('cqb:progress', JSON.stringify(p));
+      return n;
+    } catch (e) {
+      return 0;
     }
   }
 
@@ -407,9 +432,15 @@
     };
 
     $('btnClear').onclick = function () {
-      if (!confirm('清空全部题库？此操作不可撤销。练习进度不受影响。')) return;
+      // 题库清空了，练习进度就彻底没有归属，留着纯属占地方
+      if (!confirm('清空全部题库？\n\n所有题目，以及它们的练习记录' +
+          '（作答 / 错题本 / 收藏）都会一起清掉。\n\n此操作不可撤销。')) return;
+
       send({ type: 'CLEAR_BANKS' }).then(function () {
-        toast('题库已清空');
+        try {
+          localStorage.removeItem('cqb:progress');
+        } catch (e) { /* 忽略 */ }
+        toast('题库和练习进度都已清空');
         refresh();
       });
     };

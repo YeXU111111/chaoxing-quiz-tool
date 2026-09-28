@@ -122,6 +122,15 @@
       await sleep(2000);
       var chainBtn = document.getElementById('cqb-chain');
       ok(!!chainBtn, '面板上有「连续采集本章」按钮');
+
+      // 按钮提示里的上限数字是从 CHAIN_MAX 拼出来的。
+      // 注意 CHAIN_MAX 声明得比 buildPanel 晚（靠 var 提升 + boot 在文件末尾执行才成立），
+      // 万一以后有人把 buildPanel 提前调用，这里会变成 "最多 undefined 节" —— 钉一下。
+      ok(/最多 \d+ 节/.test(chainBtn.title),
+         '★ 按钮提示带上了上限数字：' + chainBtn.title);
+      ok(chainBtn.title.indexOf('100') >= 0,
+         '★ 上限是 100 节，和 CHAIN_MAX 一致');
+
       if (chainBtn) chainBtn.click();
 
       // 三节要逐节跑：每节 = 开标签 + 抓取 + 4 秒间隔。

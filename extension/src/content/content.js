@@ -308,7 +308,9 @@
       '  <div class="cqb-actions">',
       '    <button class="cqb-btn cqb-primary" id="cqb-grab">抓取本题</button>',
       '    <button class="cqb-btn" id="cqb-page">整卷翻页抓取</button>',
-      '    <button class="cqb-btn" id="cqb-chain" title="从当前小节开始，自动逐节抓完本章（最多 40 节）">连续采集本章</button>',
+      // 上限数字从 CHAIN_MAX 取，别再手写一遍 —— 写死过一次，改的时候就漏了
+      '    <button class="cqb-btn" id="cqb-chain" title="从当前小节开始，自动逐节抓完本章（最多 ' +
+        CHAIN_MAX + ' 节）">连续采集本章</button>',
       '    <button class="cqb-btn cqb-stop cqb-hidden" id="cqb-stop">停止抓取</button>',
       '    <button class="cqb-btn" id="cqb-open">打开刷题台</button>',
       '  </div>',
@@ -664,7 +666,7 @@
   var CHAIN_ARMED = 'cqb:chainArmed';
   var CHAIN_STOP_KEY = 'cqb:chainStop';
   var CHAIN_STEPS = 'cqb:chainSteps';
-  var CHAIN_MAX = 40;           // 一次连续采集最多走多少节，防跑飞
+  var CHAIN_MAX = 100;          // 一次连续采集最多走多少节，防跑飞
   var CHAIN_DELAY = 4000;       // 节与节之间的间隔。别太急，这是在对超星发请求
   var CHAIN_SKIP_DELAY = 1600;  // 这一节没测验时，只等短一点
 

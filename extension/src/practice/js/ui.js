@@ -187,8 +187,31 @@
     });
   }
 
+  /**
+   * 丢掉当前范围里已经不存在的题型/章节选择。
+   *
+   * 换学科之后，原来选的题型可能在新范围里一道题都没有 ——
+   * 留着它，池子会莫名其妙变空，而用户看不出是哪个条件在作怪。
+   */
+  function pruneFilterSelections() {
+    var types = {};
+    var chapters = {};
+
+    banksInScope().forEach(function (id) {
+      STATE.banks[id].questions.forEach(function (q) {
+        types[q.type] = 1;
+        chapters[q.chapter || '未分章节'] = 1;
+      });
+    });
+
+    STATE.filter.types = STATE.filter.types.filter(function (t) { return types[t]; });
+    if (STATE.filter.chapter && !chapters[STATE.filter.chapter]) STATE.filter.chapter = '';
+  }
+
   /** 重建练习序列（筛选条件或题库变化时调用） */
   function rebuildSession(keepQid) {
+    pruneFilterSelections();
+
     var filter = Object.assign({}, STATE.filter, { subjectMap: STATE.subjects });
     if (STATE.settings.skipNoAnswer) filter.onlyWithAnswer = true;
 
@@ -250,19 +273,47 @@
     }
 
     var total = groups.reduce(function (n, g) { return n + g.questions; }, 0);
-    var html = '<button class="chip' + (STATE.filter.subjects.length ? '' : ' active') +
-               '" data-subject="">全部 ' + total + '</button>';
+    var chosen = STATE.filter.subjects;
+
+    var html = '<button class="chip' + (chosen.length ? '' : ' active') +
+               '" data-subject="" title="显示全部学科">全部 ' + total + '</button>';
+
+    var unclassified = null;
 
     groups.forEach(function (g) {
-      var active = STATE.filter.subjects.indexOf(g.name) >= 0 ? ' active' : '';
-      var muted = g.name === CQB.UNCLASSIFIED ? ' chip-muted' : '';
-      var tip = g.courseIds.length ? ('课程 ID：' + g.courseIds.join('、')) : '这些题库没抓到课程 ID';
-      html += '<button class="chip' + active + muted + '" data-subject="' + escapeHtml(g.name) + '"' +
+      var on = chosen.indexOf(g.name) >= 0;
+      var unc = g.name === CQB.UNCLASSIFIED;
+      if (unc) unclassified = g;
+
+      // 未分类且确实有题没归位 —— 值得催一下
+      var nag = (unc && g.questions) ? ' chip-nag' : '';
+      var cls = 'chip' + (on ? ' active' : '') + (unc ? ' chip-muted' : '') + nag;
+
+      var tip = (on ? '再点一下取消选择' : '点一下只看这个学科') +
+                '　' + g.bankIds.length + ' 套题库' +
+                (g.courseIds.length ? '　课程 ID：' + g.courseIds.join('、') : '　（没抓到课程 ID）');
+
+      html += '<button class="' + cls + '" data-subject="' + escapeHtml(g.name) + '"' +
               ' title="' + escapeHtml(g.name + '　' + tip) + '">' +
               escapeHtml(g.name) + ' ' + g.questions + '</button>';
     });
 
     box.innerHTML = html;
+
+    // 一行说明：多选时告诉用户还能取消，没选时提醒有未分类
+    var note = $('subjectNote');
+    if (note) {
+      if (chosen.length > 1) {
+        note.textContent = '已选 ' + chosen.length + ' 个学科，再点芯片可取消';
+        note.className = 'filter-note';
+      } else if (!chosen.length && unclassified && unclassified.questions) {
+        note.textContent = '有 ' + unclassified.questions + ' 道题还没归类，点「归类」分一下';
+        note.className = 'filter-note warn';
+      } else {
+        note.textContent = '';
+        note.className = 'filter-note hidden';
+      }
+    }
 
     // 改名按钮只在选中了单个学科时可用
     var renameBtn = $('btnRenameSubject');
@@ -271,7 +322,7 @@
       renameBtn.disabled = !renameable;
       renameBtn.title = renameable
         ? '把「' + renameable[0].name + '」改名'
-        : '先在左边选中一个学科（只选中一个时才能改名）';
+        : '先选中一个学科（只选中一个时才能改名）';
     }
   }
 
@@ -313,11 +364,29 @@
     sel.value = ids.indexOf(cur) >= 0 || cur === '__all__' ? cur : '__all__';
   }
 
+  /**
+   * 当前「学科 + 题库」两个筛选条件下，实际会参与练习的题库 id。
+   *
+   * 题型计数、章节计数、错题统计都必须走这一个口径。
+   * 否则会出现「左栏选的是英语，题型栏却还在显示计网的填空题 12」这种自相矛盾 ——
+   * 用户点了那个题型，池子直接空掉。
+   */
+  function banksInScope() {
+    var subj = STATE.filter.subjects;
+    var ids = STATE.filter.bankIds;
+    var map = STATE.subjects;
+
+    return Object.keys(STATE.banks).filter(function (id) {
+      if (ids.length && ids.indexOf(id) < 0) return false;
+      if (subj.length && subj.indexOf(CQB.subjectNameOf(STATE.banks[id], map)) < 0) return false;
+      return true;
+    });
+  }
+
   function renderFilters() {
-    // 题型 chips：只显示当前题库里真实存在的题型
+    // 题型 chips：只显示当前范围内真实存在的题型
     var typeCount = {};
-    Object.keys(STATE.banks).forEach(function (id) {
-      if (STATE.filter.bankIds.length && STATE.filter.bankIds.indexOf(id) < 0) return;
+    banksInScope().forEach(function (id) {
       STATE.banks[id].questions.forEach(function (q) {
         typeCount[q.type] = (typeCount[q.type] || 0) + 1;
       });
@@ -348,8 +417,7 @@
 
     // 章节列表
     var chapterCount = {};
-    Object.keys(STATE.banks).forEach(function (id) {
-      if (STATE.filter.bankIds.length && STATE.filter.bankIds.indexOf(id) < 0) return;
+    banksInScope().forEach(function (id) {
       STATE.banks[id].questions.forEach(function (q) {
         var c = q.chapter || '未分章节';
         chapterCount[c] = (chapterCount[c] || 0) + 1;
@@ -383,15 +451,16 @@
     $('statAcc').textContent = st.done ? st.accuracy + '%' : '—';
     $('statAcc').className = st.done ? (st.accuracy >= 60 ? 'c-ok' : 'c-bad') : '';
 
-    // 全局错题数（跨当前筛选，看的是整个题库）
-    var wrongAll = 0;
-    Object.keys(STATE.banks).forEach(function (id) {
+    // 错题数跟着当前学科/题库范围走。
+    // 这块面板叫「本组进度」，如果选了英语却显示全部学科的错题数，读起来是错的。
+    var wrongInScope = 0;
+    banksInScope().forEach(function (id) {
       STATE.banks[id].questions.forEach(function (q) {
         var p = STATE.progress[q.id];
-        if (p && p.wrongBooked) wrongAll++;
+        if (p && p.wrongBooked) wrongInScope++;
       });
     });
-    $('statWrong').textContent = wrongAll;
+    $('statWrong').textContent = wrongInScope;
   }
 
   function renderQuestion() {
@@ -437,9 +506,11 @@
     $('tagType').textContent = CQB.TYPE_LABEL[q.type] || '题目';
     var subjTag = $('tagSubject');
     if (subjTag) {
-      subjTag.textContent = item.subject || '';
-      // 只有「未分类」才需要在卡片上提醒，正常学科名不用占地方
-      subjTag.style.display = (item.subject && item.subject !== CQB.UNCLASSIFIED) ? '' : 'none';
+      var subj = item.subject || CQB.UNCLASSIFIED;
+      subjTag.textContent = subj;
+      // 未分类要显眼 —— 它是个待处理的状态，不是一种学科
+      subjTag.classList.toggle('tag-nag', subj === CQB.UNCLASSIFIED);
+      subjTag.style.display = '';   // 一直显示：按「全部」浏览时得能看出这题属于哪里
     }
 
     $('tagChapter').textContent = q.chapter || '未分章节';
@@ -787,12 +858,57 @@
    * 这种情况 —— 它们一开始全挤在「未分类」里，得一套一套分开。
    * ------------------------------------------------------------------ */
 
+  /** 已有的学科名（不含「未分类」），按拼音排 */
+  function subjectNames() {
+    var names = [];
+    CQB.groupBySubject(STATE.banks, STATE.subjects).forEach(function (g) {
+      if (g.name !== CQB.UNCLASSIFIED && names.indexOf(g.name) < 0) names.push(g.name);
+    });
+    return names.sort(function (a, b) { return a.localeCompare(b, 'zh'); });
+  }
+
+  /**
+   * 学科下拉的选项。
+   * 第一项是「（未分类）」，最后一项是「＋ 新建学科…」。
+   *
+   * 用下拉而不是让用户手打 —— 手打太容易打错一个字就分出一个新学科组，
+   * 而且完全看不出到底已经有哪些学科可选。
+   */
+  function subjectOptionsHtml(selected, extraNames) {
+    var names = subjectNames();
+    (extraNames || []).forEach(function (n) {
+      if (n && n !== CQB.UNCLASSIFIED && names.indexOf(n) < 0) names.push(n);
+    });
+
+    var html = '<option value=""' + (selected ? '' : ' selected') + '>（未分类）</option>';
+    names.forEach(function (n) {
+      html += '<option value="' + escapeHtml(n) + '"' + (n === selected ? ' selected' : '') + '>' +
+              escapeHtml(n) + '</option>';
+    });
+    html += '<option value="__new__">＋ 新建学科…</option>';
+    return html;
+  }
+
   function openOrganize() {
     if (!Object.keys(STATE.banks).length) { toast('还没有题库', true); return; }
+
     if ($('organizeSearch')) $('organizeSearch').value = '';
-    if ($('organizeBulk')) $('organizeBulk').value = '';
+    if ($('organizeCheckAll')) $('organizeCheckAll').checked = false;
+
     renderOrganize('');
+    refreshOrganizeBulkOptions();
     openModal('organizeModal');
+  }
+
+  /** 顶部「批量设为」那个下拉。行里出现过的自定义学科也要能选到 */
+  function refreshOrganizeBulkOptions() {
+    var sel = $('organizeBulk');
+    if (!sel) return;
+
+    var extra = qa('#organizeList .organize-select').map(function (s) { return s.value; })
+      .filter(function (v) { return v && v !== '__new__'; });
+
+    sel.innerHTML = subjectOptionsHtml('', extra);
   }
 
   function renderOrganize(keyword) {
@@ -822,48 +938,119 @@
       shown++;
 
       html += '<div class="organize-row">' +
+        '<input type="checkbox" class="organize-check" data-bank="' + escapeHtml(id) + '"' +
+          ' title="勾选后可批量修改">' +
         '<div class="organize-name" title="' + escapeHtml(title) + '">' +
           '<b>' + escapeHtml(title) + '</b>' +
           '<small>' + (b.questions || []).length + ' 题' +
             (b.courseId ? ' · 课程 ID ' + escapeHtml(b.courseId) : ' · 无课程 ID') +
           '</small>' +
         '</div>' +
-        '<input type="text" class="organize-input" data-bank="' + escapeHtml(id) + '"' +
-          ' list="subjectOptions" placeholder="未分类"' +
-          ' value="' + escapeHtml(subj === CQB.UNCLASSIFIED ? '' : subj) + '">' +
+        '<select class="organize-select" data-bank="' + escapeHtml(id) + '">' +
+          subjectOptionsHtml(subj === CQB.UNCLASSIFIED ? '' : subj) +
+        '</select>' +
+        '<button class="btn mini danger organize-del" data-bank="' + escapeHtml(id) + '"' +
+          ' title="删除这套题库">删</button>' +
       '</div>';
     });
 
     box.innerHTML = shown ? html : '<p class="hint">没有匹配的题库</p>';
+
+    box.querySelectorAll('.organize-select').forEach(function (sel) {
+      sel.onchange = function () { onSubjectSelectChange(this); };
+    });
+    box.querySelectorAll('.organize-check').forEach(function (c) {
+      c.onchange = updateOrganizeCount;
+    });
+    box.querySelectorAll('.organize-del').forEach(function (btn) {
+      btn.onclick = function () { doDeleteBanks([this.getAttribute('data-bank')]); };
+    });
+
+    updateOrganizeCount();
   }
 
-  function organizeBulkApply() {
-    var name = String(($('organizeBulk') || {}).value || '').trim();
-    if (!name) { toast('先填一个学科名', true); return; }
+  /** 行内下拉选到「＋ 新建学科…」时，问个名字再把它插进所有下拉 */
+  function onSubjectSelectChange(sel) {
+    if (!sel || sel.value !== '__new__') return;
 
+    var name = '';
+    try { name = window.prompt('新建一个学科，叫什么名字？') || ''; } catch (e) { name = ''; }
+    name = String(name).trim();
+
+    if (!name) { sel.value = ''; return; }    // 取消 = 退回未分类
+
+    // 插进所有下拉，保证这一批操作里处处可选
+    qa('#organizeList .organize-select').forEach(function (s) {
+      var opts = Array.prototype.slice.call(s.options);
+      for (var i = 0; i < opts.length; i++) {
+        if (opts[i].value === name) return;              // 已经存在
+        if (opts[i].value === '__new__') {
+          var o = document.createElement('option');
+          o.value = name;
+          o.textContent = name;
+          s.insertBefore(o, opts[i]);
+          return;
+        }
+      }
+    });
+
+    sel.value = name;
+    refreshOrganizeBulkOptions();
+    toast('新学科「' + name + '」，点保存后生效');
+  }
+
+  function updateOrganizeCount() {
+    var all = qa('#organizeList .organize-check');
+    var on = all.filter(function (c) { return c.checked; });
+    var label = $('organizeCount');
+    if (label) {
+      label.textContent = on.length
+        ? ('已选 ' + on.length + ' / ' + all.length)
+        : ('全选（' + all.length + ' 套）');
+    }
+  }
+
+  /** 把勾选中的题库一次性设为同一个学科 */
+  function organizeBulkApply() {
+    var checked = qa('#organizeList .organize-check').filter(function (c) { return c.checked; });
+    if (!checked.length) { toast('先勾选要修改的题库', true); return; }
+
+    var sel = $('organizeBulk');
+    if (!sel) return;
+
+    if (sel.value === '__new__') { onSubjectSelectChange(sel); return; }
+
+    var name = sel.value;
     var n = 0;
-    qa('#organizeList .organize-input').forEach(function (inp) {
-      inp.value = name;
+
+    checked.forEach(function (c) {
+      var row = c.closest('.organize-row');
+      var s = row && row.querySelector('.organize-select');
+      if (!s) return;
+      s.value = name;
       n++;
     });
-    toast(n ? ('已把 ' + n + ' 套题库都填成「' + name + '」，记得保存') : '列表里没有题库');
+
+    toast('已把 ' + n + ' 套题库设为「' + (name || '未分类') + '」，记得点保存');
   }
 
   function saveOrganize() {
-    var inputs = qa('#organizeList .organize-input');
-    if (!inputs.length) { closeModals(); return; }
+    var sels = qa('#organizeList .organize-select');
+    if (!sels.length) { closeModals(); return; }
 
     var next = Object.assign({}, STATE.subjects);
     var changed = 0;
 
-    inputs.forEach(function (inp) {
-      var b = STATE.banks[inp.getAttribute('data-bank')];
+    sels.forEach(function (sel) {
+      var b = STATE.banks[sel.getAttribute('data-bank')];
       if (!b) return;
       var key = CQB.subjectKeyOf(b);
       if (!key) return;
 
-      var name = String(inp.value || '').trim();
+      var raw = sel.value;
+      var name = raw === '__new__' ? '' : String(raw || '').trim();
       var before = next[key] || '';
+
       if (name) next[key] = name; else delete next[key];
       if (before !== name) changed++;
     });
@@ -883,6 +1070,110 @@
       refreshSubjectOptions();
       closeModals();
       toast('已更新 ' + changed + ' 套题库的学科');
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 删除
+   *
+   * 删除会连练习进度一起清掉。只删题不删进度的话：这些记录永远没人再读、
+   * 白占 localStorage 配额，而且以后重新导入同一批题（id 相同）会莫名其妙
+   * 带上旧的做题记录。所以确认框里会把这一点写明白。
+   *
+   * 想只清进度、不动题库的话，设置里有「清空练习进度」。
+   * ------------------------------------------------------------------ */
+
+  /** 删完之后把内存状态收拾干净。返回顺带清掉了几条练习记录 */
+  function afterDelete(res) {
+    STATE.banks = res.banks;
+
+    var dropped = Store.forgetProgress(STATE.progress, res.removedIds || []);
+
+    // 被删的题库可能还挂在筛选项里，留着会筛出一个空池子
+    var alive = Object.keys(STATE.banks);
+    STATE.filter.bankIds = STATE.filter.bankIds.filter(function (id) {
+      return alive.indexOf(id) >= 0;
+    });
+
+    return dropped;
+  }
+
+  /** 让确认框在无头/自动化环境里也能走通 */
+  function askConfirm(msg) {
+    try { return window.confirm(msg); } catch (e) { return true; }
+  }
+
+  function doDeleteBanks(bankIds) {
+    bankIds = (bankIds || []).filter(function (id) { return STATE.banks[id]; });
+    if (!bankIds.length) { toast('没有要删除的题库', true); return; }
+
+    var qTotal = bankIds.reduce(function (n, id) {
+      return n + ((STATE.banks[id].questions || []).length);
+    }, 0);
+
+    var head = bankIds.length === 1
+      ? '删除题库「' + (STATE.banks[bankIds[0]].workTitle ||
+                        STATE.banks[bankIds[0]].courseName || bankIds[0]) + '」？'
+      : '删除这 ' + bankIds.length + ' 套题库？';
+
+    if (!askConfirm(head + '\n\n共 ' + qTotal + ' 道题。\n' +
+        '这些题的练习记录（作答 / 错题本 / 收藏）也会一起清掉。\n\n此操作不可撤销。')) {
+      return;
+    }
+
+    Store.deleteBanks(bankIds).then(function (res) {
+      if (!res.removedBanks) { toast('没找到要删的题库', true); return; }
+
+      var dropped = afterDelete(res);
+
+      renderBankSelect();
+      refreshSubjectOptions();
+      rebuildSession();
+
+      // 如果是从「整理题库」弹窗里删的，列表得跟着刷新 ——
+      // 否则被删掉的那几行还挂在那里，看着像没删成功
+      if ($('organizeModal') && !$('organizeModal').classList.contains('hidden')) {
+        renderOrganize(($('organizeSearch') || {}).value || '');
+        refreshOrganizeBulkOptions();
+      }
+
+      toast('已删除 ' + res.removedBanks + ' 套题库、' + res.removedIds.length + ' 道题' +
+            (dropped ? '，连同 ' + dropped + ' 条练习记录' : ''));
+    });
+  }
+
+  function doDeleteCurrent() {
+    var s0 = STATE.session;
+    var item = s0 && s0.current();
+    if (!item) return;
+
+    var plain = String(item.q.stem || '').replace(/<[^>]+>/g, '').trim();
+    var preview = plain.slice(0, 40) + (plain.length > 40 ? '…' : '');
+
+    if (!askConfirm('从《' + (item.bankTitle || '当前题库') + '》里删掉这道题？\n\n' +
+        preview + '\n\n它的练习记录也会一起清掉。此操作不可撤销。')) {
+      return;
+    }
+
+    var at = s0.cursor;
+
+    Store.deleteQuestions(item.bankId, [item.q.id]).then(function (res) {
+      if (!res.removed) { toast('删除失败：题库里没找到这道题', true); return; }
+
+      var dropped = afterDelete(res);
+
+      renderBankSelect();
+      refreshSubjectOptions();
+      rebuildSession();      // 里面会 renderAll 一次
+
+      // 光标停在原位（后面那道顶上来了），删的是最后一道就退一格
+      var s = STATE.session;
+      if (s.questions.length) s.cursor = Math.min(at, s.questions.length - 1);
+      renderAll();           // 挪好光标再渲染一次
+
+      toast('已删除这道题' +
+            (res.emptied ? '，那套题库已空，一并移除' : '') +
+            (dropped ? '，连同练习记录' : ''));
     });
   }
 
@@ -1023,6 +1314,241 @@
     el.classList.remove('hidden');
   }
 
+  /* ------------------------------------------------------------------ *
+   * 导出 PDF
+   *
+   * 为什么走 window.print() 而不是直接吐出 .pdf 文件：
+   * 手写 PDF 必须嵌入中文字体，一套 CJK 字体动辄 5–15MB；MV3 扩展又禁止
+   * 远程加载代码，塞不进第三方 PDF 库。浏览器自带的打印引擎本来就有完整
+   * 的中文字体和图片支持，让它排版最省事也最可靠 —— 用户在打印窗口里
+   * 把目标选成「另存为 PDF」就得到文件了。
+   * ------------------------------------------------------------------ */
+
+  var PRINT_ID = 'cqbPrint';
+
+  function pdfOptions() {
+    var box = function (id, dflt) {
+      var el = $(id);
+      return el ? el.checked : dflt;
+    };
+    return {
+      scope: ($('pdfScope') || {}).value || 'current',
+      answer: box('pdfAnswer', true),
+      analysis: box('pdfAnalysis', true),
+      group: box('pdfGroup', true),
+      onlyNoAnswer: box('pdfOnlyNoAnswer', false)
+    };
+  }
+
+  function openPdf() {
+    if (!Object.keys(STATE.banks).length) { toast('还没有题库', true); return; }
+    var rep = $('pdfReport');
+    if (rep) { rep.textContent = ''; rep.classList.add('hidden'); }
+    openModal('pdfModal');
+  }
+
+  /** 取出要打印的题目。当前筛选结果直接复用会话的池子，口径和屏幕上完全一致 */
+  function collectForPrint(opts) {
+    var items;
+
+    if (opts.scope === 'all') {
+      items = [];
+      Object.keys(STATE.banks).forEach(function (id) {
+        var b = STATE.banks[id];
+        (b.questions || []).forEach(function (q) {
+          items.push({
+            q: q,
+            bankId: id,
+            bankTitle: b.workTitle || b.courseName || id,
+            subject: CQB.subjectNameOf(b, STATE.subjects)
+          });
+        });
+      });
+    } else {
+      items = (STATE.session ? STATE.session.questions : []).slice();
+    }
+
+    if (opts.onlyNoAnswer) {
+      items = items.filter(function (it) { return it.q && !it.q.hasAnswer; });
+    }
+    return items;
+  }
+
+  /** 按 学科 → 题库 两层归拢，保持原有顺序 */
+  function groupForPrint(items, opts) {
+    var sections = [];
+    var index = {};
+
+    items.forEach(function (it) {
+      var subj = opts.group ? (it.subject || CQB.UNCLASSIFIED) : '';
+      var bank = opts.group ? (it.bankTitle || '未命名题库') : '';
+      var sk = subj + '\u0000' + bank;
+
+      if (!index[sk]) {
+        var sec = index['\u0000' + subj];
+        if (!sec) {
+          sec = { subject: subj, banks: [], _bankIndex: {} };
+          index['\u0000' + subj] = sec;
+          sections.push(sec);
+        }
+        var bk = { title: bank, questions: [] };
+        sec.banks.push(bk);
+        index[sk] = bk;
+      }
+      index[sk].questions.push(it);
+    });
+
+    return sections;
+  }
+
+  /** 题干/选项/解析可能是富文本（带图和公式），走和屏幕上同一套清洗 */
+  function richForPrint(s, origin) {
+    var raw = String(s == null ? '' : s);
+    if (raw && RICH_TAG_RE.test(raw)) {
+      try { return sanitizeHtml(raw, origin || ''); } catch (e) { /* 退回纯文本 */ }
+    }
+    return escapeHtml(raw).replace(/\n/g, '<br>');
+  }
+
+  function buildPrintHtml(opts) {
+    var items = collectForPrint(opts);
+    if (!items.length) return { html: '', count: 0 };
+
+    var now = new Date();
+    var stamp = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
+                ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+    var html = '<div class="p-head">' +
+      '<h1>' + (opts.scope === 'all' ? '题库全集' : '题库 · 当前筛选') + '</h1>' +
+      '<p>' + items.length + ' 道题　·　导出于 ' + stamp +
+        (opts.answer ? '' : '　·　不含答案') + '</p>' +
+      '</div>';
+
+    var n = 0;
+
+    groupForPrint(items, opts).forEach(function (sec) {
+      if (sec.subject) {
+        html += '<h2 class="p-subject">' + escapeHtml(sec.subject) + '</h2>';
+      }
+      sec.banks.forEach(function (bank) {
+        if (bank.title) html += '<h3 class="p-bank">' + escapeHtml(bank.title) + '</h3>';
+        bank.questions.forEach(function (it) {
+          n++;
+          html += questionPrintHtml(it.q, n, opts);
+        });
+      });
+    });
+
+    return { html: html, count: items.length };
+  }
+
+  function questionPrintHtml(q, n, opts) {
+    var origin = '';
+    try { origin = CQB.getOrigin(q.sourceUrl || ''); } catch (e) { origin = ''; }
+
+    var h = '<div class="p-q">';
+
+    h += '<div class="p-stem"><span class="p-no">' + n + '.</span>' +
+         '<span class="p-type">' + escapeHtml(CQB.TYPE_LABEL[q.type] || '题目') + '</span>' +
+         richForPrint(q.stem, origin) + '</div>';
+
+    if (q.options && q.options.length) {
+      h += '<ul class="p-opts">';
+      q.options.forEach(function (o) {
+        h += '<li><b>' + escapeHtml(o.key || '') + '.</b>' + richForPrint(o.text, origin) + '</li>';
+      });
+      h += '</ul>';
+    }
+
+    if (opts.answer) {
+      var ans = q.hasAnswer ? formatAnswer(q, q.answer) : '';
+      h += '<div class="p-ans">答案：<b>' + (ans ? escapeHtml(ans) : '（未公布）') + '</b></div>';
+    }
+
+    if (opts.analysis && q.analysis) {
+      h += '<div class="p-ana">解析：' + richForPrint(q.analysis, origin) + '</div>';
+    }
+
+    h += '</div>';
+    return h;
+  }
+
+  function showPdfReport(msg, isErr) {
+    var el = $('pdfReport');
+    if (!el) return;
+    el.className = 'import-report';
+    el.style.background = isErr ? 'var(--bad-soft)' : 'var(--ok-soft)';
+    el.style.borderLeftColor = isErr ? 'var(--bad)' : 'var(--ok)';
+    el.textContent = msg;
+  }
+
+  function doExportPdf() {
+    var opts = pdfOptions();
+    var rep = $('pdfReport');
+
+    if (rep) { rep.textContent = ''; rep.classList.add('hidden'); }
+
+    var built = buildPrintHtml(opts);
+    if (!built.count) {
+      showPdfReport('这个范围里没有题目' +
+        (opts.onlyNoAnswer ? '（「只导出答案未公布的题」把它们全过滤掉了）' : '') +
+        '。换个范围或取消勾选再试。', true);
+      return;
+    }
+
+    var boxEl = $(PRINT_ID);
+    if (!boxEl) { showPdfReport('页面里找不到打印容器，刷新一下再试', true); return; }
+
+    boxEl.innerHTML = built.html;
+
+    // 打印对话框默认拿 document.title 当文件名，借它把文件名定好
+    var prevTitle = document.title;
+    var t = new Date();
+    var stamp = String(t.getFullYear()) + pad(t.getMonth() + 1) + pad(t.getDate()) +
+                '-' + pad(t.getHours()) + pad(t.getMinutes());
+    document.title = '题库-' + (opts.scope === 'all' ? '全部' : '筛选') +
+                     '-' + built.count + '题-' + stamp;
+
+    var cleaned = false;
+    function cleanup() {
+      if (cleaned) return;
+      cleaned = true;
+      document.title = prevTitle;
+      boxEl.innerHTML = '';
+      closeModals();
+    }
+
+    var fired = false;
+    function fire() {
+      if (fired) return;
+      fired = true;
+      try {
+        window.print();
+      } catch (e) {
+        showPdfReport('调用打印失败：' + e.message, true);
+      }
+      cleanup();
+    }
+
+    // 题干里的图片得先加载完，否则导出的 PDF 上是一片空白
+    var imgs = Array.prototype.slice.call(boxEl.querySelectorAll('img'));
+    var pending = imgs.length;
+
+    if (!pending) { setTimeout(fire, 60); return; }
+
+    var tick = function () {
+      pending--;
+      if (pending <= 0) fire();
+    };
+    imgs.forEach(function (img) {
+      if (img.complete) { tick(); return; }
+      img.addEventListener('load', tick, { once: true });
+      img.addEventListener('error', tick, { once: true });
+    });
+
+    setTimeout(fire, 4000);   // 图片卡住也得让用户拿到东西
+  }
+
   function doExport() {
     var payload = CQB.buildExport(STATE.banks);
     if (!payload.stats.questions) { toast('还没有题目可以导出', true); return; }
@@ -1079,20 +1605,29 @@
     });
 
     // ---- 学科 ----
+    // 学科支持多选：点一下选中，再点一下取消。
+    // 「同时练高数和英语」是很自然的需求，逼着人一次只看一门太蠢。
     $('subjectFilter').onclick = function (e) {
       var btn = e.target.closest('button[data-subject]');
       if (!btn || !this.contains(btn)) return;
 
       var name = btn.getAttribute('data-subject');
-      STATE.filter.subjects = name ? [name] : [];
+      var cur = STATE.filter.subjects.slice();
 
-      // 换学科要把题库选择一起重置，否则会留着上一个学科的题库 id，
-      // 两个筛选条件互相矛盾，池子直接空掉
+      if (!name) {
+        cur = [];                               // 点「全部」= 清空
+      } else {
+        var i = cur.indexOf(name);
+        if (i >= 0) cur.splice(i, 1);           // 已选中 → 取消
+        else cur.push(name);                    // 未选中 → 加上
+      }
+
+      STATE.filter.subjects = cur;
+
+      // 题库选择要重置：它可能指向一个已经不在范围内的题库
       STATE.filter.bankIds = [];
-      STATE.filter.chapter = '';
-      STATE.filter.types = [];
       renderBankSelect();
-      rebuildSession();
+      rebuildSession();     // 里面会顺手清掉失效的题型/章节选择
     };
 
     $('btnRenameSubject').onclick = doRenameSubject;
@@ -1102,6 +1637,29 @@
 
     if ($('organizeSearch')) {
       $('organizeSearch').oninput = function () { renderOrganize(this.value); };
+    }
+
+    if ($('organizeCheckAll')) {
+      $('organizeCheckAll').onchange = function () {
+        var on = this.checked;
+        qa('#organizeList .organize-check').forEach(function (c) { c.checked = on; });
+        updateOrganizeCount();
+      };
+    }
+
+    $('btnPdf').onclick = openPdf;
+    $('btnDoPdf').onclick = doExportPdf;
+    $('btnDeleteQ').onclick = doDeleteCurrent;
+
+    if ($('btnOrganizeDelete')) {
+      $('btnOrganizeDelete').onclick = function () {
+        var ids = qa('#organizeList .organize-check')
+          .filter(function (c) { return c.checked; })
+          .map(function (c) { return c.getAttribute('data-bank'); });
+
+        if (!ids.length) { toast('先勾选要删除的题库', true); return; }
+        doDeleteBanks(ids);
+      };
     }
 
     $('btnImport').onclick = function () { openModal('importModal'); };
@@ -1173,12 +1731,22 @@
     };
 
     $('btnClearBanks').onclick = function () {
-      if (!confirm('确定清空全部题库吗？此操作不可撤销（练习进度不受影响）。')) return;
+      var qn = 0;
+      Object.keys(STATE.banks).forEach(function (id) {
+        qn += (STATE.banks[id].questions || []).length;
+      });
+
+      // 题库清空了，练习进度就彻底没有归属了，留着纯属占地方 —— 一起清掉
+      if (!confirm('清空全部题库？\n\n' + qn + ' 道题，以及它们的练习记录' +
+          '（作答 / 错题本 / 收藏）都会一起清掉。\n\n此操作不可撤销。')) return;
+
       Store.clearBanks().then(function () {
         STATE.banks = {};
+        STATE.progress = {};
+        Store.resetProgress();
         renderBankSelect(); rebuildSession();
         closeModals();
-        toast('题库已清空');
+        toast('题库和练习进度都已清空');
       });
     };
 

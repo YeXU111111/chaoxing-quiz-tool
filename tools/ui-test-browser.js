@@ -117,18 +117,38 @@
     ok(chips0.indexOf('大学英语') >= 0, '★ 识别出学科「大学英语」——两个学科没有混在一起');
     eq(chips0.length, 3, '学科 chips = 全部 + 2 个学科');
 
-    // 「全部」时不该有学科标签
+    // ---- 多选：点一下选中，再点一下取消 ----
     clickText(qa('#subjectFilter button'), '计算机网络');
     await sleep(80);
     eq($('posTotal').textContent, '15', '只看「计算机网络」时 15 题');
     eq($('bankSelect').options.length, 3, '题库下拉同步缩到该学科的 2 套 + 全部');
     eq($('tagSubject').textContent, '计算机网络', '题目卡片显示学科标签');
+    eq($('tagSubject').className.indexOf('tag-nag'), -1, '已归类的题不加提醒样式');
 
     clickText(qa('#subjectFilter button'), '大学英语');
     await sleep(80);
-    eq($('posTotal').textContent, '4', '再看「大学英语」时 4 题');
-    eq($('bankSelect').options.length, 2, '题库下拉只剩 1 套 + 全部');
+    eq($('posTotal').textContent, '19',
+       '★ 两个学科同时选中 = 19 题（多选生效，而不是替换掉前一个）');
+    eq(qa('#subjectFilter button.active').length, 2, '两个 chip 同时处于选中态');
+    ok($('subjectNote').textContent.indexOf('已选 2 个学科') >= 0,
+       '★ 多选时给出提示：' + $('subjectNote').textContent);
+    eq($('bankSelect').options.length, 4, '题库下拉含两个学科的 3 套 + 全部');
+
+    // 再点一次「计算机网络」= 取消它
+    clickText(qa('#subjectFilter button'), '计算机网络');
+    await sleep(80);
+    eq($('posTotal').textContent, '4', '★ 再点一下取消选中，只剩「大学英语」的 4 题');
+    eq(qa('#subjectFilter button.active').length, 1, '只剩一个 chip 选中');
     eq($('tagSubject').textContent, '大学英语', '学科标签跟着切换');
+
+    // ---- 题型计数必须跟着学科走 ----
+    // 选英语时，计网的「填空题」不该还挂在题型栏上诱导用户去点
+    var typeChips = qa('#typeFilter button').map(function (b) { return b.textContent; });
+    var sumTypes = typeChips.reduce(function (n, s) {
+      var m = /(\d+)\s*$/.exec(s.trim());
+      return n + (m ? Number(m[1]) : 0);
+    }, 0);
+    eq(String(sumTypes), '4', '★ 题型计数只统计当前学科范围（合计 4 题，不是全部 19）');
 
     // 改名：超星的课程名通常长得没法看，得能自己起名字
     var origPrompt = window.prompt;
@@ -145,6 +165,15 @@
     clickText(qa('#subjectFilter button'), '全部');
     await sleep(80);
     eq($('posTotal').textContent, '19', '重置学科筛选后恢复 19 题');
+    eq(qa('#subjectFilter button.active').length, 1, '「全部」是唯一选中的 chip');
+
+    // 计数也要跟着还原
+    var allTypes = qa('#typeFilter button').map(function (b) { return b.textContent; });
+    var allSum = allTypes.reduce(function (n, s) {
+      var m = /(\d+)\s*$/.exec(s.trim());
+      return n + (m ? Number(m[1]) : 0);
+    }, 0);
+    eq(String(allSum), '19', '取消学科筛选后题型计数恢复 19');
     ok(true, '学科 chips 最终为：' + subjQ().join(' / '));
 
     /* ---------------- 3. 单选题作答 ---------------- */
@@ -420,49 +449,92 @@
     click($('btnOrganize'));
     ok(!$('organizeModal').classList.contains('hidden'), '整理弹窗打开');
 
-    var allRows = qa('#organizeList .organize-row');
-    var allInputs = qa('#organizeList .organize-input');
-    ok(allRows.length >= 3, '列出了全部题库（' + allRows.length + ' 套）');
-    eq(allInputs.length, allRows.length, '每套题库对应一个学科输入框');
-    eq(allInputs[0].value, '', '★ 第一行是未分类的题库 —— 最需要处理的排最前');
+    var rows0 = qa('#organizeList .organize-row');
+    var sels0 = qa('#organizeList .organize-select');
+    var checks0 = qa('#organizeList .organize-check');
+
+    ok(rows0.length >= 3, '列出了全部题库（' + rows0.length + ' 套）');
+    eq(sels0.length, rows0.length, '每套题库对应一个学科下拉');
+    eq(checks0.length, rows0.length, '每套题库对应一个勾选框');
+    eq(sels0[0].value, '', '★ 第一行是未分类的题库 —— 最需要处理的排最前');
+
+    // 必须是下拉可选，而不是让用户手打 —— 手打一个错字就分出一个新学科组
+    var optVals = Array.prototype.slice.call(sels0[0].options).map(function (o) { return o.value; });
+    ok(optVals.indexOf('') >= 0, '下拉里有「（未分类）」');
+    ok(optVals.indexOf('计算机网络') >= 0, '★ 下拉里能直接选到已有学科「计算机网络」');
+    ok(optVals.indexOf('政治经济学') >= 0, '★ 也能选到「政治经济学」');
+    eq(optVals[optVals.length - 1], '__new__', '最后一项是「＋ 新建学科…」');
 
     var rowTitles = qa('#organizeList .organize-name b').map(function (b) { return b.textContent; });
     ok(rowTitles.some(function (t) { return t.indexOf('第 1 章 商品经济') >= 0; }),
-       '整理列表里能看出题库名：' + rowTitles.slice(0, 3).join(' / '));
+       '列表里能看出题库名：' + rowTitles.slice(0, 3).join(' / '));
     ok(rowTitles.some(function (t) { return t.indexOf('文本导入') >= 0; }),
-       '两套文本导入的题库在列表里是分开的两行');
+       '两套文本导入的题库是分开的两行');
 
     // 搜索
     $('organizeSearch').value = '政治';
     $('organizeSearch').oninput.call($('organizeSearch'));
     await sleep(60);
-    var filtered = qa('#organizeList .organize-row');
-    ok(filtered.length >= 1 && filtered.length < allRows.length, '搜索能过滤题库列表');
-    eq(qa('#organizeList .organize-input')[0].value, '政治经济学', '过滤后剩下的正是政治经济学那套');
+    var filteredRows = qa('#organizeList .organize-row');
+    ok(filteredRows.length >= 1 && filteredRows.length < rows0.length, '搜索能过滤题库列表');
+    eq(qa('#organizeList .organize-select')[0].value, '政治经济学',
+       '★ 过滤后剩下的正是政治经济学那套，下拉已选中它');
 
     $('organizeSearch').value = '';
     $('organizeSearch').oninput.call($('organizeSearch'));
     await sleep(60);
-    eq(qa('#organizeList .organize-row').length, allRows.length, '清空搜索后恢复全部');
+    eq(qa('#organizeList .organize-row').length, rows0.length, '清空搜索后恢复全部');
 
-    // 批量填
-    $('organizeBulk').value = '临时测试';
+    /* ---- 全选 ---- */
+    $('organizeCheckAll').checked = true;
+    $('organizeCheckAll').onchange.call($('organizeCheckAll'));
+    await sleep(40);
+    ok(qa('#organizeList .organize-check').every(function (c) { return c.checked; }),
+       '「全选」勾上了所有题库');
+    ok($('organizeCount').textContent.indexOf('已选 ' + rows0.length) >= 0,
+       '★ 勾选计数正确：' + $('organizeCount').textContent);
+
+    $('organizeCheckAll').checked = false;
+    $('organizeCheckAll').onchange.call($('organizeCheckAll'));
+    await sleep(40);
+    ok(qa('#organizeList .organize-check').every(function (c) { return !c.checked; }),
+       '取消全选清空勾选');
+
+    /* ---- 批量：只勾未分类的那几套，一次改成同一学科 ---- */
+    var blanks = qa('#organizeList .organize-select').filter(function (s) { return !s.value; });
+    ok(blanks.length >= 1, '还有 ' + blanks.length + ' 套未分类');
+
+    var marked = 0;
+    blanks.forEach(function (s) {
+      var c = s.closest('.organize-row').querySelector('.organize-check');
+      c.checked = true;
+      c.onchange();
+      marked++;
+    });
+    ok($('organizeCount').textContent.indexOf('已选 ' + marked) >= 0,
+       '★ 只勾了 ' + marked + ' 套（不是全部）：' + $('organizeCount').textContent);
+
+    $('organizeBulk').value = '计算机网络';
     click($('btnOrganizeBulk'));
     await sleep(60);
-    ok(qa('#organizeList .organize-input').every(function (i) { return i.value === '临时测试'; }),
-       '「应用到全部」把所有输入框都填上了');
-    ok($('toast').textContent.indexOf('记得保存') >= 0, '批量填后提示要保存');
+    eq(qa('#organizeList .organize-select').filter(function (s) { return !s.value; }).length, 0,
+       '★ 批量应用后未分类的被清空了');
+    ok($('toast').textContent.indexOf('记得点保存') >= 0, '批量后提示还没落盘');
 
-    // 撤销批量填：重新打开（不保存直接关掉，再进来应恢复原值）
+    // 不保存直接关掉 → 重开应恢复原值
     click(q('#organizeModal [data-close]'));
     click($('btnOrganize'));
     await sleep(60);
-    eq(qa('#organizeList .organize-input')[0].value, '', '★ 取消后不落盘，重新打开恢复原值');
+    ok(qa('#organizeList .organize-select').some(function (s) { return !s.value; }),
+       '★ 取消不落盘，重新打开后未分类的仍在');
 
-    // 真正归类：把未分类那套归到「计算机网络」
-    var blankInputs = qa('#organizeList .organize-input').filter(function (i) { return !i.value; });
-    ok(blankInputs.length >= 1, '还有 ' + blankInputs.length + ' 套未分类');
-    blankInputs[0].value = '计算机网络';
+    // 真正保存
+    qa('#organizeList .organize-select').forEach(function (s) {
+      if (!s.value) s.closest('.organize-row').querySelector('.organize-check').checked = true;
+    });
+    $('organizeBulk').value = '计算机网络';
+    click($('btnOrganizeBulk'));
+    await sleep(60);
 
     click($('btnOrganizeSave'));
     await sleep(250);
@@ -475,6 +547,185 @@
     var savedMap = JSON.parse(localStorage.getItem('cqb:subjects') || '{}');
     ok(Object.keys(savedMap).length >= 2,
        '学科映射已落盘（' + Object.keys(savedMap).length + ' 条），刷新页面仍然有效');
+
+    /* ---------------- 12d. 导出 PDF ---------------- */
+    section('导出 PDF');
+
+    click($('btnPdf'));
+    ok(!$('pdfModal').classList.contains('hidden'), '导出 PDF 弹窗打开');
+    ok(!$('pdfAnswer').checked === false, '默认勾选「包含答案」');
+
+    // 无头环境里真调 window.print() 会卡住，而且也没法选「另存为 PDF」。
+    // 打桩成快照，正好能检查「打印那一刻页面上到底是什么」。
+    var origPrint = window.print;
+    var printCalls = 0;
+    var snap = null;
+
+    window.print = function () {
+      printCalls++;
+      snap = { title: document.title, html: $('cqbPrint').innerHTML };
+    };
+
+    click($('btnDoPdf'));
+    await sleep(500);
+
+    eq(printCalls, 1, '★ 调用了浏览器打印（PDF 由打印窗口的「另存为 PDF」产出）');
+    ok(!!snap, '打印时确实往打印容器里填了内容');
+    ok(/^题库-/.test(snap.title), '★ 借 document.title 定好了默认文件名：' + snap.title);
+    ok(snap.html.indexOf('p-head') >= 0, 'PDF 有封面头');
+    ok((snap.html.match(/class="p-q"/g) || []).length >= 10,
+       'PDF 里题目数量正常（' + (snap.html.match(/class="p-q"/g) || []).length + ' 题）');
+    ok(snap.html.indexOf('答案：') >= 0, '默认包含答案');
+    ok(snap.html.indexOf('解析：') >= 0, '默认包含解析');
+    ok(snap.html.indexOf('p-subject') >= 0, '默认按学科分节');
+    ok(snap.html.indexOf('p-stem') >= 0 && snap.html.indexOf('p-opts') >= 0, '题干和选项都在');
+
+    eq($('cqbPrint').innerHTML, '', '★ 打印结束后容器被清空，不会残留在页面上');
+    eq(document.title.indexOf('题库-'), -1, '★ 打印后标题改回去了：' + document.title);
+    ok($('pdfModal').classList.contains('hidden'), '打印后弹窗自动关闭');
+
+    /* ---- 关掉答案/解析/分节 ---- */
+    click($('btnPdf'));
+    $('pdfAnswer').checked = false;
+    $('pdfAnalysis').checked = false;
+    $('pdfGroup').checked = false;
+
+    printCalls = 0; snap = null;
+    click($('btnDoPdf'));
+    await sleep(400);
+
+    eq(printCalls, 1, '第二次导出正常');
+    ok(snap.html.indexOf('答案：') < 0, '★ 关掉「包含答案」后 PDF 里没有答案');
+    ok(snap.html.indexOf('解析：') < 0, '关掉「包含解析」后没有解析');
+    ok(snap.html.indexOf('p-subject') < 0, '关掉分节后没有学科标题');
+    ok((snap.html.match(/class="p-q"/g) || []).length >= 10, '题目本身一道没少');
+
+    /* ---- 只要未公布答案的题 ---- */
+    click($('btnPdf'));
+    $('pdfAnswer').checked = true;
+    $('pdfAnalysis').checked = true;
+    $('pdfGroup').checked = true;
+    $('pdfOnlyNoAnswer').checked = true;
+
+    printCalls = 0; snap = null;
+    click($('btnDoPdf'));
+    await sleep(400);
+
+    if (printCalls === 0) {
+      ok($('pdfReport').textContent.indexOf('没有题目') >= 0,
+         '★ 勾了「只要未公布答案」但一道都没有时给出明确提示，而不是弹个空白打印窗');
+      $('pdfOnlyNoAnswer').checked = false;
+    } else {
+      ok(snap.html.indexOf('（未公布）') >= 0, '★ 只导出未公布答案的题，答案栏显示「（未公布）」');
+    }
+
+    /* ---- 空题库时不该开打印窗 ---- */
+    window.print = function () { printCalls++; };
+    printCalls = 0;
+    click(q('#pdfModal [data-close]'));
+    $('pdfOnlyNoAnswer').checked = false;
+
+    window.print = origPrint;
+
+    /* ---------------- 12e. 删除题目 / 题库 ---------------- */
+    section('删除题目与题库');
+
+    var importJunk = async function (id, title, stems) {
+      click($('btnImport'));
+      $('pasteArea').value = JSON.stringify({
+        schema: 'chaoxing-quiz/v1',
+        banks: [{
+          id: id,
+          workTitle: title,
+          questions: stems.map(function (s, i) {
+            return {
+              type: 'single', index: i + 1, stem: s,
+              options: ['甲', '乙'], answerRaw: 'A', hasAnswer: true
+            };
+          })
+        }]
+      });
+      if ($('importSubject')) $('importSubject').value = '';
+      click($('btnDoImport'));
+      await sleep(280);
+      click(q('#importModal [data-close]'));
+      await sleep(80);
+    };
+
+    await importJunk('junk-1', '待删题库 A', ['垃圾题一', '垃圾题二']);
+    await importJunk('junk-2', '待删题库 B', ['垃圾题三']);
+
+    var banksNow = $('bankSelect').options.length - 1;
+    ok(banksNow >= 7, '两套垃圾题库已导入，共 ' + banksNow + ' 套');
+
+    // 只看这套，答一题产出练习记录
+    click($('bankSelect'));
+    $('bankSelect').value = 'junk-1';
+    $('bankSelect').dispatchEvent(new Event('change', { bubbles: true }));
+    await sleep(150);
+    eq($('posTotal').textContent, '2', '待删题库 A 有 2 道题');
+
+    click(qa('#qOptions .opt')[0]);
+    click($('btnSubmit'));
+    await sleep(320);   // progress 写入有 150ms 防抖
+
+    var readProg = function () {
+      return Object.keys(JSON.parse(localStorage.getItem('cqb:progress') || '{}')).length;
+    };
+    var progBefore = readProg();
+    ok(progBefore > 0, '已有练习记录 ' + progBefore + ' 条');
+
+    /* ---- 删单道题 ---- */
+    ok(!!$('btnDeleteQ'), '题目卡片上有「删除本题」按钮');
+
+    click($('btnDeleteQ'));
+    await sleep(350);
+
+    eq($('posTotal').textContent, '1', '★ 删掉一道后只剩 1 题');
+    ok(readProg() < progBefore,
+       '★ 删题时练习记录一起清掉了（' + progBefore + ' → ' + readProg() + '）');
+    ok($('toast').textContent.indexOf('已删除这道题') >= 0,
+       '给出删除提示：' + $('toast').textContent);
+
+    /* ---- 把最后一道也删了：题库该被一并移除 ---- */
+    click($('btnDeleteQ'));
+    await sleep(350);
+    ok($('toast').textContent.indexOf('一并移除') >= 0,
+       '★ 删掉最后一道题时那套题库被一并移除：' + $('toast').textContent);
+
+    var stillThere = qa('#bankSelect option').some(function (o) { return o.value === 'junk-1'; });
+    ok(!stillThere, '★ 题库下拉里已经没有 junk-1');
+
+    /* ---- 整理弹窗里批量删题库 ---- */
+    click($('btnOrganize'));
+    await sleep(100);
+
+    var jcheck = qa('#organizeList .organize-check').filter(function (c) {
+      return c.getAttribute('data-bank') === 'junk-2';
+    })[0];
+    ok(!!jcheck, '整理列表里能找到 junk-2');
+
+    jcheck.checked = true;
+    jcheck.onchange();
+
+    var beforeDel = $('bankSelect').options.length;
+    click($('btnOrganizeDelete'));
+    await sleep(350);
+
+    eq($('bankSelect').options.length, beforeDel - 1,
+       '★ 批量删除题库生效（' + beforeDel + ' → ' + $('bankSelect').options.length + ' 项）');
+    ok($('toast').textContent.indexOf('已删除') >= 0, '给出删除提示：' + $('toast').textContent);
+
+    var stillInList = qa('#organizeList .organize-check').some(function (c) {
+      return c.getAttribute('data-bank') === 'junk-2';
+    });
+    ok(!stillInList, '★ 整理列表也同步刷新了，被删的行不在了');
+
+    // 每行还有一个单独的「删」按钮
+    ok(qa('#organizeList .organize-del').length === qa('#organizeList .organize-row').length,
+       '每套题库各有一个「删」按钮');
+
+    click(q('#organizeModal [data-close]'));
 
     /* ---------------- 13. 无答案题保护 ---------------- */
     section('无答案题保护');

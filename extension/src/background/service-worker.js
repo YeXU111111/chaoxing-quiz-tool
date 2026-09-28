@@ -504,11 +504,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'DELETE_BANK':
       (async () => {
         const banks = await getBanks();
+        const b = banks[msg.bankId];
+
+        // 把题目 id 一并回给调用方 —— 练习进度存在刷题台的 localStorage 里，
+        // service worker 碰不到，只能由弹窗自己按这份名单去清
+        const removedIds = b ? (b.questions || []).map(q => q.id) : [];
+
         delete banks[msg.bankId];
         await setBanks(banks);
+
         const s = summarize(banks);
         await updateBadge(s.totalQuestions);
-        sendResponse(Object.assign({ ok: true }, s));
+        sendResponse(Object.assign({ ok: true, removedIds }, s));
       })().catch(e => sendResponse({ ok: false, error: e.message }));
       return true;
 

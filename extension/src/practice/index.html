@@ -44,7 +44,8 @@
 
   <div class="topbar-right">
     <button id="btnImport" class="btn">导入题库</button>
-    <button id="btnExport" class="btn">导出</button>
+    <button id="btnExport" class="btn">导出 JSON</button>
+    <button id="btnPdf" class="btn">导出 PDF</button>
     <button id="btnSettings" class="btn btn-icon" title="设置">⚙</button>
     <button id="btnTheme" class="btn btn-icon" title="切换主题">◐</button>
   </div>
@@ -71,6 +72,7 @@
           <button class="link-btn" id="btnOrganize" title="逐套题库指定学科 —— 导入的题目在这里归类">归类</button>
         </label>
         <div class="chips" id="subjectFilter"></div>
+        <div class="filter-note hidden" id="subjectNote"></div>
       </div>
       <div class="filter-group">
         <label>状态</label>
@@ -132,6 +134,7 @@
         <div class="foot-left">
           <button class="btn" id="btnStar" title="快捷键 F">☆ 收藏</button>
           <button class="btn" id="btnReveal" title="快捷键 Space">显示答案</button>
+          <button class="btn danger" id="btnDeleteQ" title="把这道题从题库里删掉（会二次确认）">删除本题</button>
         </div>
         <div class="foot-right">
           <button class="btn" id="btnPrev" title="快捷键 ←">上一题</button>
@@ -256,10 +259,18 @@
       <div class="organize-toolbar">
         <input type="text" id="organizeSearch" placeholder="搜索题库…">
         <label class="field-inline">
-          <span>批量设为</span>
-          <input type="text" id="organizeBulk" list="subjectOptions" placeholder="填一个学科名">
-          <button class="btn mini" id="btnOrganizeBulk">应用到全部</button>
+          <input type="checkbox" id="organizeCheckAll">
+          <span id="organizeCount">全选</span>
         </label>
+      </div>
+
+      <div class="organize-toolbar">
+        <label class="field-inline">
+          <span>把勾选的题库设为</span>
+          <select id="organizeBulk"></select>
+          <button class="btn mini" id="btnOrganizeBulk">应用</button>
+        </label>
+        <button class="btn mini danger" id="btnOrganizeDelete">删除勾选的题库</button>
       </div>
 
       <div class="organize-list" id="organizeList"></div>
@@ -271,6 +282,58 @@
     </footer>
   </div>
 </div>
+
+<!-- ============================ 导出 PDF ============================ -->
+<div class="modal hidden" id="pdfModal">
+  <div class="modal-card">
+    <header class="modal-head">
+      <h2>导出 PDF</h2>
+      <button class="btn btn-icon" data-close>✕</button>
+    </header>
+    <div class="modal-body">
+      <p class="hint">
+        点「生成」后会弹出浏览器打印窗口，<b>目标选「另存为 PDF」</b> 就能保存成文件。<br>
+        走浏览器自己的排版引擎 —— 中文和公式都能正常渲染，图片也会带上。
+      </p>
+
+      <label class="field-block">
+        <span>导出范围</span>
+        <select id="pdfScope">
+          <option value="current">当前筛选结果</option>
+          <option value="all">全部题库（忽略筛选）</option>
+        </select>
+      </label>
+
+      <label class="switch-row">
+        <input type="checkbox" id="pdfAnswer" checked>
+        <div><b>包含答案</b><small>关掉就是一份纯试卷，适合自己先做一遍</small></div>
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" id="pdfAnalysis" checked>
+        <div><b>包含解析</b><small>题目自带的解析文本</small></div>
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" id="pdfGroup" checked>
+        <div><b>按学科 / 题库分节</b><small>关掉就排成连续的一整份</small></div>
+      </label>
+      <label class="switch-row">
+        <input type="checkbox" id="pdfOnlyNoAnswer">
+        <div><b>只导出「答案未公布」的题</b><small>把老师还没放答案的那批挑出来单独打印</small></div>
+      </label>
+
+      <div class="import-report hidden" id="pdfReport"></div>
+    </div>
+    <footer class="modal-foot">
+      <div class="spacer"></div>
+      <button class="btn" data-close>取消</button>
+      <button class="btn primary" id="btnDoPdf">生成 PDF</button>
+    </footer>
+  </div>
+</div>
+
+<!-- 打印专用容器：平时隐藏，导出 PDF 时临时填充。
+     结构放在页面里而不是新开窗口，免得被弹窗拦截器拦掉。 -->
+<div class="cqb-print" id="cqbPrint"></div>
 
 <!-- 已有学科名，给各处输入框做补全 -->
 <datalist id="subjectOptions"></datalist>

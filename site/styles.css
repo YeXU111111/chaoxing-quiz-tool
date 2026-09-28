@@ -186,6 +186,17 @@ body {
 .chip-muted { border-style: dashed; color: var(--text-3); }
 .chip-muted.active { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
 
+/* 还有题没归类时催一下：加个小圆点，别让它混在别的芯片里看不见 */
+.chip-nag { border-color: var(--warn); color: var(--warn); }
+.chip-nag::after {
+  content: ''; display: inline-block; vertical-align: middle;
+  width: 5px; height: 5px; margin-left: 5px; border-radius: 50%;
+  background: var(--warn);
+}
+
+.filter-note { font-size: 11.5px; color: var(--text-3); margin-top: 6px; line-height: 1.5; }
+.filter-note.warn { color: var(--warn); }
+
 .link-btn {
   margin-left: auto;
   border: 0; background: none; padding: 0;
@@ -255,6 +266,7 @@ body {
 .tag-type { background: var(--brand-soft); color: var(--brand); border-color: transparent; font-weight: 600; }
 .tag-nosanswer { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
 .tag-subject { background: var(--ok-soft); color: var(--ok); border-color: transparent; font-weight: 600; }
+.tag-nag { background: var(--warn-soft); color: var(--warn); }
 .qcard-pos { font-size: 12.5px; color: var(--text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .qcard-pos b { color: var(--text); font-size: 15px; }
 
@@ -412,7 +424,26 @@ kbd {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .organize-name small { display: block; font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
-.organize-input { width: 168px; flex-shrink: 0; }
+.organize-select {
+  width: 180px; flex-shrink: 0;
+  padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--bg-elev); color: var(--text); font: inherit; font-size: 12.5px; outline: none;
+}
+.organize-select:focus { border-color: var(--brand); }
+
+.organize-check {
+  flex-shrink: 0; width: 15px; height: 15px;
+  accent-color: var(--brand); cursor: pointer;
+}
+.organize-del { flex-shrink: 0; padding: 4px 9px; }
+.organize-row:has(.organize-check:checked) { background: var(--brand-soft); }
+
+.organize-toolbar select {
+  padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--bg-elev); color: var(--text); font: inherit; font-size: 12.5px; outline: none;
+}
+.organize-toolbar select:focus { border-color: var(--brand); }
+.organize-toolbar input[type="checkbox"] { accent-color: var(--brand); cursor: pointer; }
 
 /* 并排两个字段：学科 + 题库名 */
 .field-row { display: flex; gap: 14px; flex-wrap: wrap; }
@@ -472,6 +503,45 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
   .qcard { padding: 18px; }
 }
 
+/* ------------------------------ 导出 PDF ------------------------------ */
+
+/* 打印容器平时藏着，导出时临时填充内容，@media print 里才显示出来 */
+.cqb-print { display: none; }
+
 @media print {
-  .topbar, .sidebar, .qcard-foot, .kbd-hint { display: none; }
+  /* 只留题册本体 —— 其余全部（顶栏、侧栏、弹窗、提示条）都不进 PDF */
+  body > *:not(.cqb-print) { display: none !important; }
+  .cqb-print { display: block !important; }
+
+  @page { margin: 16mm 14mm; }
+
+  html, body { background: #fff; color: #000; }
+
+  .cqb-print { font-size: 11pt; line-height: 1.7; }
+
+  .p-head { border-bottom: 1.5pt solid #000; padding-bottom: 6pt; margin-bottom: 14pt; }
+  .p-head h1 { font-size: 17pt; margin: 0 0 4pt; font-weight: 600; }
+  .p-head p { font-size: 9.5pt; margin: 0; color: #555; }
+
+  .p-subject {
+    font-size: 14pt; font-weight: 600;
+    margin: 18pt 0 8pt; padding: 4pt 0 4pt 8pt;
+    border-left: 3pt solid #333; background: #f2f2f2;
+  }
+  .p-bank { font-size: 11.5pt; font-weight: 600; margin: 12pt 0 6pt; color: #333; }
+
+  /* 一道题尽量别被切到两页去 */
+  .p-q { margin: 0 0 10pt; break-inside: avoid; page-break-inside: avoid; }
+
+  .p-no { font-weight: 700; margin-right: 4pt; }
+  .p-type { color: #666; font-size: 9pt; margin-right: 5pt; }
+
+  .p-opts { list-style: none; margin: 4pt 0 4pt 14pt; padding: 0; }
+  .p-opts li { margin: 1pt 0; }
+  .p-opts b { margin-right: 3pt; }
+
+  .p-ans { margin: 5pt 0 0 14pt; font-size: 10pt; }
+  .p-ana { margin: 2pt 0 0 14pt; font-size: 9.5pt; color: #444; }
+
+  .cqb-print img { max-width: 100%; height: auto; }
 }
